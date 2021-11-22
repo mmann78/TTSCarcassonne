@@ -23,6 +23,7 @@ function initializeControlPanelPage()
     self.UI.setAttribute("BaseGameExpansionLabel", "text", translate("LABEL_BASE_GAME"))
     self.UI.setAttribute("BaseTilesLabel", "text", translate("LABEL_TILES"))
     self.UI.setAttribute("BaseFollowersLabel", "text", translate("Followers"))
+    self.UI.setAttribute("CIIAbbotLabel", "text", translate("LABEL_ABBOT"))
     self.UI.setAttribute("MajorExpansionsLabel", "text", translate("LABEL_MAJOR_EXPANSIONS"))
     self.UI.setAttribute("InCExpansionLabel", "text", "1. " .. translate("Inns & Cathedrals"))
     self.UI.setAttribute("InCTilesLabel", "text", translate("LABEL_TILES"))
@@ -72,6 +73,7 @@ function initializeControlPanelPage()
 
 -- Base game
     initializeCheckbox(COLUMN_2, ROW_1, 'BaseTiles', translate({"TOOLTIP_NUM_TILES", {'{n1}', 71}}))
+    initializeCheckbox(COLUMN_4, ROW_1, 'CIIAbbot', translate("TOOLTIP_ALLOW_ABBOT"))
 
 --Inns & Cathedrals
     initializeAllCheckbox(COLUMN_1, ROW_2, 'InCAll', translate("TOOLTIP_ENABLE_ALL"))
@@ -138,6 +140,7 @@ function localizeUI(language)
         --ControlPanelItemLabel
         self.UI.setAttribute("BaseTilesLabel", "fontSize", 40)
         self.UI.setAttribute("BaseFollowersLabel", "fontSize", 40)
+        self.UI.setAttribute("CIIAbbotLabel", "fontSize", 40)
         self.UI.setAttribute("InCTilesLabel", "fontSize", 40)
         self.UI.setAttribute("InCBigFollowerLabel", "fontSize", 40)
         self.UI.setAttribute("InCInnsLabel", "fontSize", 40)
@@ -287,6 +290,10 @@ function onBaseFollowerToggle(Object, sPlayer)
         self.editButton({index = btnIDs['btnBaseFollowerToggle'], label = '' .. Global.call('getControlPanelState', {key = 'BaseNumFollowers'})})
     end
     checkAllCheckboxes()
+end
+
+function onCIIAbbotToggle(Object, sPlayer)
+    onCheckboxToggle(sPlayer, 'CIIAbbot', 'btnCIIAbbotToggle')
 end
 
 function onInCAllToggle(Object, sPlayer)

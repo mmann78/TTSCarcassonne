@@ -175,14 +175,14 @@ playerFigureSettings = {
         object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
         custom_object_params = {type = 1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507676572/D377F41E5C089D244D2FEC7281BEF39A36D351C9/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/'}
     },
-    --['CIIAbbot'] = {
-    --     name = 'Abbot',
-    --     figurepad_offset = {x = -5.15, z = -0.5},
-    --     use_snap_points = true,
-    --     save_figurepad_location = true,
-    --     object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
-    --     custom_object_params = {type = 1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507715301/5F383426AFEDBC06A18318EB6B9DD9C9E8CC206B/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/'}
-    -- },
+    ['CIIAbbot'] = {
+         name = 'Abbot',
+         figurepad_offset = {x = -5.15, z = -0.5},
+         use_snap_points = true,
+         save_figurepad_location = true,
+         object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
+         custom_object_params = {type = 1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507715301/5F383426AFEDBC06A18318EB6B9DD9C9E8CC206B/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/'}
+     },
     ['TowerTowers'] = {
         name = 'Tower',
         figurepad_offset = {x = -8.65, z = 0.0},

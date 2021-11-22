@@ -24,6 +24,7 @@
                   <Cell></Cell>
                   <Cell><Text id="BaseTilesLabel" class="ControlPanelItemLabel" text="Tiles"></Text></Cell>
                   <Cell><Text id="BaseFollowersLabel" class="ControlPanelItemLabel" text="Followers"></Text></Cell>
+                  <Cell><Text id="CIIAbbotLabel" class="ControlPanelItemLabel" text="Abbot"></Text></Cell>
               </Row>
           </TableLayout>
         </Row>

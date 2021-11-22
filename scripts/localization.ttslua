@@ -116,6 +116,7 @@ LOCALIZED_STRINGS = {
 
     ["LABEL_BASE_GAME"] = "Base Game",
     ["LABEL_MAJOR_EXPANSIONS"] = "Major Expansions",
+    ["LABEL_ABBOT"] = "Abbot",
 
       --tooltips
 
@@ -213,6 +214,7 @@ LOCALIZED_STRINGS = {
     ["LABEL_RIVER_ALLOW_U_TURNS"] = "Allow\nU-Turns",
     ["LABEL_RIVER_ALLOW_UNCONNECTED"] = "Allow Un-\nconnected",
     ["LABEL_DISABLE_PIG_HERD"] = "Disable\npig-herd",
+    ["LABEL_ALLOW_ABBOT"] = "Allow\nAbbot",
     ["LABEL_DISABLE_COUNT"] = "Disable\nThe Count",
 
       --tooltips
@@ -224,6 +226,7 @@ LOCALIZED_STRINGS = {
     ["TOOLTIP_RIVER_ALLOW_U_TURNS"] = "If checked, river tiles can be placed such that they loop back next to themselves. This can potentially lead to placement issues. Use at your own risk.",
     ["TOOLTIP_RIVER_ALLOW_UNCONNECTED"] = "If checked, river tiles no longer need to be placed such that they continue a previously started river.",
     ["TOOLTIP_DISABLE_PIG_HERD"] = "If checked, this will disable the pig-herd, which gives an extra point per city to farmers.",
+    ["TOOLTIP_ALLOW_ABBOT"] = "If checked, the abbot will be added as a starting meeple.",
     ["TOOLTIP_DISABLE_COUNT"] = "If checked, this will disable the Count.",
 
     --Game Messages

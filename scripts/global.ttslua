@@ -431,6 +431,7 @@ controlPanelSettings = {
     ['BaseTiles'] = true,
     ['BaseFollower'] = true,
     ['BaseNumFollowers'] = 7,
+    ['CIIAbbot'] = false,
     ['InCTiles'] = false,
     ['InCBigFollower'] = false,
     ['InCInns'] = false,
