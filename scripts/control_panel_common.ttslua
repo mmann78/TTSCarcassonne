@@ -15,6 +15,30 @@ NUM_TOWERS_PER_PLAYER = {[1] = 10, [2] = 10, [3] = 9, [4] = 7, [5] = 6, [6] = 5}
 NUM_BRIDGES_PER_PLAYER = {[1] = 3, [2] = 3, [3] = 3, [4] = 3, [5] = 2, [6] = 2}
 NUM_CASTLES_PER_PLAYER = {[1] = 3, [2] = 3, [3] = 3, [4] = 3, [5] = 2, [6] = 2}
 
+-- List all of the incompatible starting tiles.  River tile sets can be combined, but
+-- all others are required to be unique
+incompatibleStartingCombinations = {
+    ['StartingTileBase'] = {incompatibleList={'StartingTileRiver', 'StartingTileRiverII', 'StartingTileRiverBB5',
+                           'StartingTileCoC', 'StartingTileWoF', 'StartingTileSchool', 'StartingTileWindRoses'},
+                            label="LABEL_BASE_STARTING_TILE"},
+    ['StartingTileRiver'] = {incompatibleList={'StartingTileBase', 'StartingTileSchool', 'StartingTileWindRoses'},
+                            label="LABEL_THE_RIVER"},
+    ['StartingTileRiverII'] = {incompatibleList={'StartingTileBase', 'StartingTileSchool', 'StartingTileWindRoses'},
+                            label="LABEL_THE_RIVER_II"},
+    ['StartingTileRiverBB5'] = {incompatibleList={'StartingTileBase', 'StartingTileSchool', 'StartingTileWindRoses'},
+                            label="LABEL_THE_RIVER_BIG_BOX_5"},
+    ['StartingTileCoC'] = {incompatibleList={'StartingTileBase', 'StartingTileSchool', 'StartingTileWindRoses'},
+                            label="LABEL_CITY_OF_CARCASSONNE"},
+    ['StartingTileWoF'] = {incompatibleList={'StartingTileBase', 'StartingTileSchool', 'StartingTileWindRoses'},
+                           label="LABEL_WHEEL_OF_FORTUNE"},
+    ['StartingTileSchool'] = {incompatibleList={'StartingTileBase', 'StartingTileRiver', 'StartingTileRiverII', 'StartingTileRiverBB5',
+                           'StartingTileCoC', 'StartingTileWoF', 'StartingTileWindRoses'},
+                           label="LABEL_SCHOOL"},
+    ['StartingTileWindRoses'] = {incompatibleList={'StartingTileBase', 'StartingTileRiver', 'StartingTileRiverII', 'StartingTileRiverBB5',
+                           'StartingTileCoC', 'StartingTileWoF', 'StartingTileSchool'},
+                           label="LABEL_WIND_ROSES"}
+}
+
 button_parameters = {}
 button_parameters.function_owner = self
 button_parameters.rotation = {0.0, 180.0, 0.0}
@@ -22,8 +46,18 @@ button_parameters.width = 480
 button_parameters.height = 480
 button_parameters.font_size = 300
 
-function onCheckboxToggle(sPlayer, data_key, button_key)
+function getCheckboxButtonKey(key)
+    return 'btn' .. key .. 'Toggle'
+end
+
+function getCheckboxClickFunction(key)
+    return 'on' .. key .. 'Toggle'
+end
+
+--For checkboxes that don't have a corresponding "all" checkbox
+function onSingleCheckboxToggle(sPlayer, data_key)
     if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
+    local button_key = getCheckboxButtonKey(data_key)
     if Global.call('getControlPanelState', {key = data_key}) then
         Global.call('setControlPanelState', {key = data_key, value = false})
         self.editButton({index = btnIDs[button_key], label = ''})
@@ -31,9 +65,40 @@ function onCheckboxToggle(sPlayer, data_key, button_key)
         Global.call('setControlPanelState', {key = data_key, value = true})
         self.editButton({index = btnIDs[button_key], label = 'X'})
     end
-    checkAllCheckboxes()
 end
 
+function onCheckboxToggle(sPlayer, data_key, allCheckboxButtonGroups)
+    onSingleCheckboxToggle(sPlayer, data_key)
+    checkAllCheckboxes(allCheckboxButtonGroups)
+end
+
+function onStartingTileCheckboxToggle(sPlayer, key, incompatible_message, allCheckboxButtonGroups)
+    if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
+    if not Global.call('getControlPanelState', {key = key}) and not isCompatibleStartingTile(key) then
+        printToColor(translate(incompatible_message), sPlayer, ERROR_COLOR)
+    else
+        onCheckboxToggle(sPlayer, key, AllCheckboxButtonGroups)
+    end
+end
+
+function checkAllCheckboxes(allCheckboxButtonGroups)
+  for key, buttonGroup in pairs(allCheckboxButtonGroups) do
+      local allChecked = true
+      for _, keyGroup in ipairs(buttonGroup) do
+          if not Global.call('getControlPanelState', {key = keyGroup}) then
+              allChecked = false
+          end
+      end
+
+      if allChecked then
+          self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = 'X'})
+      else
+          self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = ''})
+      end
+  end
+end
+
+--Create a single checkbox
 function initializeCheckbox(x, z, key, tooltip)
     button_parameters.color = WHITE_COLOR
     if Global.call('getControlPanelState', {key = key}) then
@@ -42,11 +107,121 @@ function initializeCheckbox(x, z, key, tooltip)
         button_parameters.label = ''
     end
     button_parameters.tooltip = tooltip
-    button_parameters.click_function = 'on' .. key .. 'Toggle'
+    button_parameters.click_function = getCheckboxClickFunction(key)
     button_parameters.position = {x, BUTTON_HEIGHT, z}
     self.createButton( button_parameters )
-    btnIDs['btn' .. key .. 'Toggle'] = index
+    btnIDs[getCheckboxButtonKey(key)] = index
     index = index + 1
+end
+
+--Create a checkbox that controls multiple checkboxes (for a single expansion set)
+function initializeAllCheckbox(x, z, key, description, allCheckboxButtonGroups)
+    local buttonGroup = allCheckboxButtonGroups[key]
+    if buttonGroup == nil then
+      return
+    end
+    local allChecked = true
+    for _, setting_key in ipairs(buttonGroup) do
+        if not Global.call('getControlPanelState', {key = setting_key}) then
+            allChecked = false
+        end
+    end
+
+    if allChecked then
+        button_parameters.label = 'X'
+    else
+        button_parameters.label = ''
+    end
+    button_parameters.tooltip = description
+    button_parameters.click_function = getCheckboxClickFunction(key)
+    button_parameters.position = {x, BUTTON_HEIGHT, z}
+    self.createButton( button_parameters )
+    btnIDs[getCheckboxButtonKey(key)] = index
+    index = index + 1
+end
+
+--Initialize a configuration option that involves incrementing and decrementing a counter valuw
+function initializeCounter(key, column_pos, button_height, row_pos, key_tooltip, num_value_key)
+
+  button_parameters.click_function = "on" .. key .. "Decr"
+  button_parameters.label = '-'
+  button_parameters.tooltip = ''
+  button_parameters.position = {column_pos + 1, button_height, row_pos}
+  self.createButton( button_parameters )
+  btnIDs["btn" .. key .. "Decr"] = index
+  index = index + 1
+
+  button_parameters.click_function = getCheckboxClickFunction(key)
+  button_parameters.position = {column_pos, button_height, row_pos}
+  button_parameters.tooltip = translate(key_tooltip)
+  if Global.call('getControlPanelState', {key = key}) then
+      button_parameters.label = '' .. Global.call('getControlPanelState', {key = num_value_key})
+  end
+  self.createButton( button_parameters )
+  btnIDs[getCheckboxButtonKey(key)] = index
+  index = index + 1
+
+  button_parameters.click_function = "on" .. key .. "Incr"
+  button_parameters.label = '+'
+  button_parameters.tooltip = ''
+  button_parameters.position = {column_pos - 1, button_height, row_pos}
+  self.createButton( button_parameters )
+  btnIDs["btn" .. key .. "Incr"] = index
+  index = index + 1
+end
+
+function onCounterDecr(sPlayer, key, num_value_key, min_value, warning_threshold, warning_message)
+    if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
+    local counter_value = Global.call('getControlPanelState', {key = num_value_key})
+    counter_value = counter_value - 1
+    if counter_value < 0 then
+      counter_value = 0
+    end
+    if counter_value == warning_threshold then
+      printToColor(translate(warning_message), sPlayer, ERROR_COLOR)
+    end
+    Global.call('setControlPanelState', {key = num_value_key, value = counter_value})
+    self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '' .. counter_value})
+end
+
+function onCounterIncr(sPlayer, key, num_value_key, max_value, warning_threshold, warning_message)
+    if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
+    local counter_value = Global.call('getControlPanelState', {key = num_value_key})
+    counter_value = counter_value + 1
+    if counter_value > max_value then
+       counter_value = max_value
+    end
+    if numFollowers == warning_threshold then
+      printToColor(translate(warning_message), sPlayer, ERROR_COLOR)
+    end
+    Global.call('setControlPanelState', {key = num_value_key, value = counter_value})
+    self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '' .. counter_value})
+end
+
+function onCounterToggle(sPlayer, key, num_value_key, warning_message, allCheckboxButtonGroups)
+
+    if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
+    if Global.call('getControlPanelState', {key = key}) then
+        Global.call('setControlPanelState', {key = key, value = false})
+        self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '0'})
+        if (warning_message ~= nil) then
+          printToColor(translate(warning_message), sPlayer, ERROR_COLOR)
+        end
+    else
+        Global.call('setControlPanelState', {key = key, value = true})
+        self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '' .. Global.call('getControlPanelState', {key = num_value_key})})
+    end
+    checkAllCheckboxes(allCheckboxButtonGroups)
+end
+
+function setCheckboxCounter(key, num_value_key)
+    if Global.call('getControlPanelState', {key = key}) then
+        Global.call('setControlPanelState', {key = key, value = false})
+        self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '0'})
+    else
+        Global.call('setControlPanelState', {key = key, value = true})
+        self.editButton({index = btnIDs[getCheckboxButtonKey(key)], label = '' .. Global.call('getControlPanelState', {key = num_value_key})})
+    end
 end
 
 --will print a message to all players and to the log
@@ -65,6 +240,28 @@ function allGameMessage(msg, rgb, target_player)
             end
         end
     end
+end
+
+-- determine if the provided key (starting tile) is compatible with the currently enabled starting tile(s)
+function isCompatibleStartingTile(key)
+
+    -- if it's not a starting tile, it's compatible
+    if incompatibleStartingCombinations[key] == nil then
+      return true
+    end
+
+    for starting_key, data in pairs(incompatibleStartingCombinations) do
+      --Check if the starting tile is enabled
+      if Global.call('getControlPanelState', {key = starting_key}) then
+        for _, incompatible_key in ipairs(data.incompatibleList) do
+          if incompatible_key == key then
+            return false
+          end
+        end
+      end
+    end
+
+    return true
 end
 
 --true if element is one of the elements of the table, otherwise false

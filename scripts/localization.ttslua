@@ -90,6 +90,15 @@ LOCALIZED_STRINGS = {
 
     --Control Panel pg. 1
 
+    ["LABEL_BASE_STARTING_TILE"] = "Base Starting Tile",
+    ["LABEL_THE_RIVER"] = "The River",
+    ["LABEL_THE_RIVER_II"] = "The River II",
+    ["LABEL_THE_RIVER_BIG_BOX_5"] = "The River (Big Box 5)",
+    ["LABEL_CITY_OF_CARCASSONNE"] = "City of Carcassonne",
+    ["LABEL_WHEEL_OF_FORTUNE"] = "Wheel of Fortune",
+    ["LABEL_SCHOOL"] = "School",
+    ["LABEL_WIND_ROSES"] = "Wind Roses",
+
       --tooltips
 
     ["TOOLTIP_AI_HOTSEAT_TOGGLE"] = "Click to toggle between the following:\nAI (Easy)\nAI (Hard)\nHotseat player (of the player clicking)\nNone",
@@ -106,8 +115,7 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SEAT_OCCUPIED"] = "There is already a player sitting at this seat. Cannot create a hotseat player here.",
     ["MESSAGE_SEAT_ASSIGNED_TO_AI"] = "{c1} has been set to an AI player of difficulty: {s1}",
     ["MESSAGE_SEAT_ASSIGNED_TO_HOTSEAT"] = "{c1} has been set to a hotseat player of {p1}",
-    ["MESSAGE_BASE_STARTING_TILE_NOT_ALLOWED"] = "You cannot enable the base starting tile while other starting tiles are enabled.",
-    ["MESSAGE_BASE_STARTING_TILE_REMOVED"] = "The base starting tile cannot be combined with this starting tile set. Removing base tile.",
+    ["MESSAGE_STARTING_TILE_REMOVED"] = "The {s1} cannot be combined with {s2}. Removing {s2}.",
     ["MESSAGE_HOTSEAT_REMOVED"] = "{c1} is no longer a hotseat player",
     ["MESSAGE_TOWER_COUNT_CHANGED"] = "Warning: Tower count has changed to {n1} due to a hotseat/AI player being added/removed.",
 
@@ -588,14 +596,15 @@ LOCALIZED_STRINGS = {
     ["Catch"] = "Vangen",
     --Starting Tiles
     ["Starting Tiles"] = "Starttegels",
-    ["Base Starting Tile"] = "Standaard starttegel",
-    ["The River"] = "De Rivier",
-    ["The River II"] = "De Rivier II",
-    ["The River (Big Box 5)"] = "De Rivier (Big Box 3)",
-    ["City of Carcassonne"] = "De stad Carcassonne",
-    ["School"] = "School",
-    ["Wind Roses"] = "Windvaan",
-    ["Wheel of Fortune"] = "Rad van Fortuin",
+    ["LABEL_BASE_STARTING_TILE"] = "Standaard starttegel",
+    ["LABEL_THE_RIVER"] = "De Rivier",
+    ["LABEL_THE_RIVER_II"] = "De Rivier II",
+    ["LABEL_THE_RIVER_BIG_BOX_5"] = "De Rivier (Big Box 3)",
+    ["LABEL_CITY_OF_CARCASSONNE"] = "De stad Carcassonne",
+    ["LABEL_WHEEL_OF_FORTUNE"] = "Rad van Fortuin",
+    ["LABEL_SCHOOL"] = "School",
+    ["LABEL_WIND_ROSES"] = "Windvaan",
+
     --Expansion Names
     ["Inns & Cathedrals"] = "Kathedralen & Herbergen",
     ["Traders & Builders"] = "Kooplieden & Bouwmeesters",
@@ -697,7 +706,7 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SEAT_OCCUPIED"] = "Hier zit al een speler. Kan hier geen medespeler maken.",
     ["MESSAGE_SEAT_ASSIGNED_TO_AI"] = "{c1} is nu een AI-speler met moeilijkheidsgraad: {s1}",
     ["MESSAGE_SEAT_ASSIGNED_TO_HOTSEAT"] = "{c1} is nu een medespeler van {p1}",
-    ["MESSAGE_BASE_STARTING_TILE_NOT_ALLOWED"] = "Je kunt de gewone starttegel niet gebruiken als andere starttegels geselecteerd zijn.",
+    --TODO: Update to MESSAGE_STARTING_TILE_REMOVED
     ["MESSAGE_BASE_STARTING_TILE_REMOVED"] = "De gewone starttegel kan niet in combinatie met deze starttegelset gebruikt worden en wordt dus uitgeschakeld.",
     ["MESSAGE_HOTSEAT_REMOVED"] = "{c1} is niet langer een medespeler",
     ["MESSAGE_TOWER_COUNT_CHANGED"] = "Waarschuwing: aantal torendelen is nu {n1} door toevoegen/verwijderen mede- of AI-speler.",
@@ -1178,14 +1187,14 @@ LOCALIZED_STRINGS = {
     ["Catch"] = "接接樂",
     --Starting Tiles
     ["Starting Tiles"] = "起始牌",
-    ["Base Starting Tile"] = "標準起始牌",
-    ["The River"] = "河流一擴充",
-    ["The River II"] = "河流二擴充",
-    ["The River (Big Box 5)"] = "河流 (大盒版5)",
-    ["City of Carcassonne"] = "卡卡頌市",
-    ["School"] = "學校",
-    ["Wind Roses"] = "風向玫瑰圖",
-    ["Wheel of Fortune"] = "命運之輪",
+    ["LABEL_BASE_STARTING_TILE"] = "標準起始牌",
+    ["LABEL_THE_RIVER"] = "河流一擴充",
+    ["LABEL_THE_RIVER_II"] = "河流二擴充",
+    ["LABEL_THE_RIVER_BIG_BOX_5"] = "河流 (大盒版5)",
+    ["LABEL_CITY_OF_CARCASSONNE"] = "卡卡頌市",
+    ["LABEL_WHEEL_OF_FORTUNE"] = "命運之輪",
+    ["LABEL_SCHOOL"] = "學校",
+    ["LABEL_WIND_ROSES"] = "風向玫瑰圖",
     --Expansion Names
     ["Inns & Cathedrals"] = "主教擴充",
     ["Traders & Builders"] = "小豬擴充",
@@ -1288,7 +1297,7 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SEAT_OCCUPIED"] = "已有玩家，無法設定熱座。",
     ["MESSAGE_SEAT_ASSIGNED_TO_AI"] = "{c1}已經被設定為人工智慧玩家，難易度：{s1}",
     ["MESSAGE_SEAT_ASSIGNED_TO_HOTSEAT"] = "{c1}已被設置為{p1}熱座玩家",
-    ["MESSAGE_BASE_STARTING_TILE_NOT_ALLOWED"] = "你不能用基本的卡牌因為其他擴充起始卡牌已經被使用。",
+    --TODO: Update to MESSAGE_STARTING_TILE_REMOVED
     ["MESSAGE_BASE_STARTING_TILE_REMOVED"] = "你選的這些起始卡牌不能和基本卡牌並用，請移除基本卡牌。",
     ["MESSAGE_HOTSEAT_REMOVED"] = "{c1}不再是熱座完家",
     ["MESSAGE_TOWER_COUNT_CHANGED"] = "警告：因為新增或移除熱座/人工智慧玩家，塔數已改變成{n1}。",

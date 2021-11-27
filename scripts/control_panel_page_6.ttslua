@@ -1,11 +1,11 @@
 #include !\TTSCarcassonne\scripts\control_panel_common
 
-EXPANSION_LABEL_SEPARATION = LABEL_SEPARATION + 1.3
-CATEGORY = 8.6
-ROW_1 = 5.0
-ROW_SPACING = 3.8
-COLUMN_1 = 6.75
-COLUMN_SPACING = 3.4
+local EXPANSION_LABEL_SEPARATION = LABEL_SEPARATION + 1.3
+local CATEGORY = 8.6
+local ROW_1 = 5.0
+local ROW_SPACING = 3.8
+local COLUMN_1 = 6.75
+local COLUMN_SPACING = 3.4
 
 function onLoad()
     Timer.create({identifier='' .. os.clock(), function_name='initializeControlPanelPage', function_owner=nil, parameters=nil, delay=0.0001})
@@ -80,49 +80,46 @@ function localizeUI(language)
     end
 end
 
-function checkAllCheckboxes()
-end
-
 function onBaseDisableRoadsToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'BaseDisableRoads', 'btnBaseDisableRoadsToggle')
+    onSingleCheckboxToggle(sPlayer, 'BaseDisableRoads')
 end
 
 function onBaseDisableCitiesToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'BaseDisableCities', 'btnBaseDisableCitiesToggle')
+    onSingleCheckboxToggle(sPlayer, 'BaseDisableCities')
 end
 
 function onBaseDisableCloistersToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'BaseDisableCloisters', 'btnBaseDisableCloistersToggle')
+    onSingleCheckboxToggle(sPlayer, 'BaseDisableCloisters')
 end
 
 function onBaseDisableFarmsToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'BaseDisableFarms', 'btnBaseDisableFarmsToggle')
+    onSingleCheckboxToggle(sPlayer, 'BaseDisableFarms')
 end
 
 function onBaseNerfSmallCityToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'BaseNerfSmallCity', 'btnBaseNerfSmallCityToggle')
+    onSingleCheckboxToggle(sPlayer, 'BaseNerfSmallCity')
 end
 
 function onTowerNerfTowersToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'TowerNerfTowers', 'btnTowerNerfTowersToggle')
+    onSingleCheckboxToggle(sPlayer, 'TowerNerfTowers')
 end
 
 function onRiverMixAllToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'RiverMixAll', 'btnRiverMixAllToggle')
+    onSingleCheckboxToggle(sPlayer, 'RiverMixAll')
 end
 
 function onRiverAllowUTurnsToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'RiverAllowUTurns', 'btnRiverAllowUTurnsToggle')
+    onSingleCheckboxToggle(sPlayer, 'RiverAllowUTurns')
 end
 
 function onRiverAllowUnconnectedToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'RiverAllowUnconnected', 'btnRiverAllowUnconnectedToggle')
+    onSingleCheckboxToggle(sPlayer, 'RiverAllowUnconnected')
 end
 
 function onRIIDisablePigherdToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'RIIDisablePigherd', 'btnRIIDisablePigherdToggle')
+    onSingleCheckboxToggle(sPlayer, 'RIIDisablePigherd')
 end
 
 function onCoCNoCountToggle(Object, sPlayer)
-    onCheckboxToggle(sPlayer, 'CoCNoCount', 'btnCoCNoCountToggle')
+    onSingleCheckboxToggle(sPlayer, 'CoCNoCount')
 end

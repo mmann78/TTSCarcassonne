@@ -1,26 +1,26 @@
 #include !\TTSCarcassonne\scripts\control_panel_common
 
-LANGUAGE_ICONS = {['en-US'] = "UK/US Flag", ['nl-NL'] = "NL Flag", ['zh-TW'] = "TW Flag"}
+local LANGUAGE_ICONS = {['en-US'] = "UK/US Flag", ['nl-NL'] = "NL Flag", ['zh-TW'] = "TW Flag"}
 
-EASY_AI_COLOR = {r=0.5,g=1.0,b=0.5}
-HARD_AI_COLOR = {r=1,g=0.3,b=0.3}
+local EASY_AI_COLOR = {r=0.5,g=1.0,b=0.5}
+local HARD_AI_COLOR = {r=1,g=0.3,b=0.3}
 
-HOTSEAT_ROW = 7.3
-ROW_1 = 3.7
-ROW_2 = 1.65
-ROW_3 = -0.35
-ROW_4 = -2.4
-ROW_5 = -4.45
-ROW_6 = -6.5
-ROW_7 = -8.55
-ROW_8 = -10.6
-STARTING_TILE_COLUMN = 8.0
-COLUMN_1 = 6.4
-COLUMN_2 = 3.8
-COLUMN_3 = 1.2
-COLUMN_4 = -1.4
-COLUMN_5 = -4.0
-COLUMN_6 = -6.6
+local HOTSEAT_ROW = 7.3
+local ROW_1 = 3.7
+local ROW_2 = 1.65
+local ROW_3 = -0.35
+local ROW_4 = -2.4
+local ROW_5 = -4.45
+local ROW_6 = -6.5
+local ROW_7 = -8.55
+local ROW_8 = -10.6
+local STARTING_TILE_COLUMN = 8.0
+local COLUMN_1 = 6.4
+local COLUMN_2 = 3.8
+local COLUMN_3 = 1.2
+local COLUMN_4 = -1.4
+local COLUMN_5 = -4.0
+local COLUMN_6 = -6.6
 
 --Runs whenever game is saved/autosaved
 function onSave()
@@ -67,14 +67,14 @@ function initializeControlPanelPage()
     self.UI.setAttribute("Red", "text", translate("Red"))
     self.UI.setAttribute("Pink", "text", translate("Pink"))
     self.UI.setAttribute("Starting Tiles", "text", translate("Starting Tiles"))
-    self.UI.setAttribute("Base Starting Tile", "text", translate("Base Starting Tile"))
-    self.UI.setAttribute("The River", "text", translate("The River"))
-    self.UI.setAttribute("The River II", "text", translate("The River II"))
-    self.UI.setAttribute("The River (Big Box 5)", "text", translate("The River (Big Box 5)"))
-    self.UI.setAttribute("City of Carcassonne", "text", translate("City of Carcassonne"))
-    self.UI.setAttribute("Wheel of Fortune", "text", translate("Wheel of Fortune"))
-    self.UI.setAttribute("School", "text", translate("School"))
-    self.UI.setAttribute("Wind Roses", "text", translate("Wind Roses"))
+    self.UI.setAttribute("Base Starting Tile", "text", translate("LABEL_BASE_STARTING_TILE"))
+    self.UI.setAttribute("The River", "text", translate("LABEL_THE_RIVER"))
+    self.UI.setAttribute("The River II", "text", translate("LABEL_THE_RIVER_II"))
+    self.UI.setAttribute("The River (Big Box 5)", "text", translate("LABEL_THE_RIVER_BIG_BOX_5"))
+    self.UI.setAttribute("City of Carcassonne", "text", translate("LABEL_CITY_OF_CARCASSONNE"))
+    self.UI.setAttribute("Wheel of Fortune", "text", translate("LABEL_WHEEL_OF_FORTUNE"))
+    self.UI.setAttribute("School", "text", translate("LABEL_SCHOOL"))
+    self.UI.setAttribute("Wind Roses", "text", translate("LABEL_WIND_ROSES"))
     self.UI.setAttribute("NextPageLabel", "text", translate("LABEL_NEXT_PAGE"))
     --Hot seats
     initializeHotseatButton(COLUMN_1, HOTSEAT_ROW, 'Green')
@@ -252,22 +252,28 @@ function onPlayerChangedColor(player)
     end
 end
 
-function onStartingCheckboxToggle(sPlayer, data_key, button_key)
+function onStartingCheckboxToggle(sPlayer, data_key)
+    local button_key = getCheckboxButtonKey(data_key)
     if Global.call('checkControlPanelPrivileges', {sColor = sPlayer}) == false then return end
     if Global.call('getControlPanelState', {key = data_key}) then
         Global.call('setControlPanelState', {key = data_key, value = false})
         self.editButton({index = btnIDs[button_key], label = ''})
     else
-        if data_key == 'StartingTileBase' and hasIncompatibleStartingTiles() then
-            printToColor(translate("MESSAGE_BASE_STARTING_TILE_NOT_ALLOWED"), sPlayer, ERROR_COLOR)
-            return
-        end
         Global.call('setControlPanelState', {key = data_key, value = true})
         self.editButton({index = btnIDs[button_key], label = 'X'})
-        if Global.call('getControlPanelState', {key = 'StartingTileBase'}) and hasIncompatibleStartingTiles() then
-            Global.call('setControlPanelState', {key = 'StartingTileBase', value = false})
-            self.editButton({index = btnIDs['btnStartingTileBaseToggle'], label = ''})
-            printToColor(translate("MESSAGE_BASE_STARTING_TILE_REMOVED"), sPlayer, ERROR_COLOR)
+
+        --Check for incompatibilities and remove any previously selected imcompatible starting tiles
+        local starting_tile = incompatibleStartingCombinations[data_key]
+        if starting_tile ~= nil then
+          for _, setting_key in ipairs(starting_tile.incompatibleList) do
+              if Global.call('getControlPanelState', {key = setting_key}) then
+                Global.call('setControlPanelState', {key = setting_key, value = false})
+                self.editButton({index = btnIDs[getCheckboxButtonKey(setting_key)], label = ''})
+                local starting_tile_name = translate(starting_tile.label)
+                local remove_tile_name = translate(incompatibleStartingCombinations[setting_key].label)
+                printToColor(translate({"MESSAGE_STARTING_TILE_REMOVED", {'{s1}', starting_tile_name}, {'{s2}', remove_tile_name}}), sPlayer, ERROR_COLOR)
+              end
+          end
         end
     end
 end
@@ -297,39 +303,29 @@ function onPinkHotseatPressed(object, sPlayer)
 end
 
 function onStartingTileBaseToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileBase', 'btnStartingTileBaseToggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileBase')
 end
 
 function onStartingTileRiverToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileRiver', 'btnStartingTileRiverToggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileRiver')
 end
 
 function onStartingTileRiverIIToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileRiverII', 'btnStartingTileRiverIIToggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileRiverII')
 end
 
 function onStartingTileRiverBB5Toggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileRiverBB5', 'btnStartingTileRiverBB5Toggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileRiverBB5')
 end
 
 function onStartingTileCoCToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileCoC', 'btnStartingTileCoCToggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileCoC')
 end
 
 function onStartingTileWoFToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileWoF', 'btnStartingTileWoFToggle')
+    onStartingCheckboxToggle(sPlayer, 'StartingTileWoF')
 end
 
 function onStartingTileSchoolToggle(Object, sPlayer)
-    onStartingCheckboxToggle(sPlayer, 'StartingTileSchool', 'btnStartingTileSchoolToggle')
-end
-
-function hasIncompatibleStartingTiles(data_key)
-    local startingGroup = {'StartingTileRiver', 'StartingTileRiverII', 'StartingTileRiverBB5', 'StartingTileCoC', 'StartingTileWoF', 'StartingTileWindRoses'}
-    for _, setting_key in ipairs(startingGroup) do
-        if Global.call('getControlPanelState', {key = setting_key}) then
-            return true
-        end
-    end
-    return false
+    onStartingCheckboxToggle(sPlayer, 'StartingTileSchool')
 end
