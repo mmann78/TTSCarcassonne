@@ -1,4 +1,4 @@
-debugLevel = 0
+local debugLevel = 0
 
 function getDebugLevel()
     return debugLevel

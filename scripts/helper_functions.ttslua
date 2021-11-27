@@ -94,7 +94,7 @@ end
 
 --will print the message if the debug level is high enough
 function debugMessage(messageDebugLevel, msg)
-    if debugLevel >= messageDebugLevel then
+      if getDebugLevel() >= messageDebugLevel then
         -- local params = {}
         -- notes = getNotebookTabs()
         --
