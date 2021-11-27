@@ -90,6 +90,7 @@ function initializeControlPanelPage()
     initializeCheckbox(STARTING_TILE_COLUMN, ROW_4, 'StartingTileRiverBB5', translate("TOOLTIP_RIVER_BB5"))
     initializeCheckbox(STARTING_TILE_COLUMN, ROW_5, 'StartingTileCoC', translate("TOOLTIP_CITY_OF_CARCASSONNE"))
     initializeCheckbox(STARTING_TILE_COLUMN, ROW_6, 'StartingTileWoF', translate("TOOLTIP_WHEEL_OF_FORTUNE"))
+    initializeCheckbox(STARTING_TILE_COLUMN, ROW_7, 'StartingTileSchool', translate("TOOLTIP_SCHOOL"))
 end
 
 function localizeUI(language)
@@ -317,6 +318,10 @@ end
 
 function onStartingTileWoFToggle(Object, sPlayer)
     onStartingCheckboxToggle(sPlayer, 'StartingTileWoF', 'btnStartingTileWoFToggle')
+end
+
+function onStartingTileSchoolToggle(Object, sPlayer)
+    onStartingCheckboxToggle(sPlayer, 'StartingTileSchool', 'btnStartingTileSchoolToggle')
 end
 
 function hasIncompatibleStartingTiles(data_key)

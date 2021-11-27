@@ -97,7 +97,14 @@ startingTileSettings = {
             [16] = {position = {x=1.59, y=2.0, z=-3.18}, rotation = {x=0,y=180,z=0}, shuffle = false, lock = true, addToGrid = true}
         }},
         ['WoFPig'] = {position = {x=-0.795, y=1.33, z=0.85}, rotation = {x=270,y=180,z=0}, shuffle = false, lock = true}
-    }}
+    }},
+    ['StartingTileSchool'] = {['School'] = {
+        ['SchoolStartingTiles'] = {position = {x=0.0, y=2.32, z=11.13}, rotation = {x=0,y=180,z=180}, shuffle = false, lock = false, contents = {
+            [1] = {position = {x=0, y=2.0, z=0}, rotation = {x=0,y=180,z=0}, shuffle = false, lock = true, addToGrid = true},
+            [2] = {position = {x=1.59, y=2.0, z=0}, rotation = {x=0,y=180,z=0}, shuffle = false, lock = true, addToGrid = true},
+        }},
+        ['Teacher'] = {position = {x=0.60, y=2.0, z=0}, rotation = {x=0,y=90,z=0}, shuffle = false, lock = true}
+    }},
 }
 
 --[<setting name>] = {name = <display name>, mesh = <model file>, diffuse = <diffuse file>, figurepad_offset = {x=<x figurepad_offset>, z=<z figurepad_offset>}, scale = {<model scale>}, use_snap_points=<use snap points>, num=<setting with number to spawn>}

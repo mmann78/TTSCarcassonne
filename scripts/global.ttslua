@@ -215,6 +215,13 @@ EXPANSION_BAGS = {
         ['RiverLakeTile'] = {guid = 'b9de5a'},
         ['RiverBodyTiles'] = {guid = 'e9d3b0'},
     }},
+    ['School'] = {guid = '354989', contents = {
+        ['Teacher'] = {guid = 'fdb1fe'},
+        ['SchoolStartingTiles'] = {guid = '56c770', contents = {
+            [1] = {guid = '343948'},
+            [2] = {guid = 'b083ca'},
+        }}
+    }},
     --Mini Expansions
     ['Flier'] = {guid = 'a50c26', contents = {
         ['FlierTiles'] = {guid = 'f006d5'},
