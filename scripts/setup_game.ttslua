@@ -1,7 +1,8 @@
 --contains scripts and data related to setting up the game
 
 --the following location is used when the base tile stack is disabled
-defaultTileStackPosition = {x=6.36, y=1.36, z=23.85}
+local defaultTileStackPosition = {x=6.36, y=1.36, z=23.85}
+
 --[<setting name>] = {[<expansion bag>] = {[<item name>] = {}}}
 tileSettings = {
     ['InCTiles'] = {['InC'] = {['InCTiles'] = {}}},
@@ -30,7 +31,19 @@ tileSettings = {
 }
 
 --the following location is used for the MixAllTiles house rule
-defaultRiverLocation = {position = {x=0.0, y=2.32, z=17.49}, rotation = {x=0,y=180,z=180}}
+local defaultRiverLocation = {position = {x=0.0, y=2.32, z=17.49}, rotation = {x=0,y=180,z=180}}
+--the following location is used for the river spring tile when a river set is included, but is not the starting set
+local riverSpringTileLocation = {position = {x=-1.59, y=2.32, z=14.31}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the river spring tile when a river set is the starting set
+local startingRiverSpringTileLocation = {position = {x=0.0, y=2.0, z=TILE_SPACING*2}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the RiverII fork tile when a river set is included, but is not the starting set
+local riverForkLocation = {position = {x=-3.18, y=2.32, z=14.31}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the RiverII fork tile when a river set is the starting set
+local startingRiverForkTileLocation = {position = {x=0, y=2, z=TILE_SPACING}, rotation = {x=0,y=180,z=0}}
+
+--Cache where the river spring and fork tiles end up because there are a few configuration options that could affect their location
+local riverSpringTile_Location
+local riverForkTile_Location
 
 --the pig should start at this position relative to the center of the wheel
 wheelPigStartingOffset = {x=0.0, z=1.645}
@@ -491,11 +504,8 @@ function startGame()
                             if sub_tile ~= nil then
                                 if sub_item_settings.lock then sub_tile.setLock(true) end
                                 if sub_item_settings.addToGrid then
-                                    local xIndex = math.floor((sub_item_settings.position.x + MIDDLE_OFFSET.x + TILE_SPACING / 2) / TILE_SPACING)
-                                    local zIndex = math.floor((sub_item_settings.position.z + MIDDLE_OFFSET.z + TILE_SPACING / 2) / TILE_SPACING)
-                                    local tileRotation = math.floor(sub_item_settings.rotation.y / 90 + 0.5)
-                                    if tileRotation == 0 then tileRotation = 4 end
-                                    addTile(xIndex, zIndex, getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid), tileRotation, false)
+                                    local location = computeStartingTileLocation(sub_item_settings.position, sub_item_settings.rotation)
+                                    addTile(location.xIndex, location.zIndex, getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid), location.tileRotation, false)
                                 end
                             end
                         end
@@ -504,6 +514,27 @@ function startGame()
             end
         end
     end
+
+    -- If playing a river expansion without CoC or WoF place the spring and fork (if included) as starting tiles
+    if not controlPanelSettings['RiverMixAll'] and not controlPanelSettings['StartingTileCoC'] and not controlPanelSettings['StartingTileWoF'] then
+        if springTile_GUID ~= nil then
+            local location = computeStartingTileLocation(riverSpringTile_Location.position, riverSpringTile_Location.rotation)
+
+            local springTile = getObjectFromGUID(springTile_GUID)
+            springTile.setLock(true)
+
+            addTile(location.xIndex, location.zIndex, springTile, location.tileRotation, false)
+        end
+        if forkTile_GUID ~= nil then
+            local location = computeStartingTileLocation(riverForkTile_Location.position, riverSpringTile_Location.rotation)
+
+            local forkTile = getObjectFromGUID(forkTile_GUID)
+            forkTile.setLock(true)
+
+            addTile(location.xIndex, location.zIndex, forkTile, location.tileRotation, false)
+        end
+    end
+
     --HACK: in cases where the game is setup automatically, the starting tile should not be highlighted
     lastPlacedPlayerTiles[activePlayers[currentPlayer]] = nil
     tileStack.shuffle()
@@ -523,6 +554,19 @@ function startGame()
     stateHandler()
     return 1
 end
+
+--Helper function to compute the X/Z index and rotation from a starting tile's coordinates
+function computeStartingTileLocation(position, rotation)
+    local tileRotation = math.floor(rotation.y / 90 + 0.5)
+    if tileRotation == 0 then tileRotation = 4 end
+
+    return {
+            xIndex = math.floor((position.x + MIDDLE_OFFSET.x + TILE_SPACING / 2) / TILE_SPACING),
+            zIndex = math.floor((position.z + MIDDLE_OFFSET.z + TILE_SPACING / 2) / TILE_SPACING),
+            tileRotation = tileRotation
+           }
+end
+
 
 --sets up player starting possessions
 function preparePlayerStartingItems()
@@ -672,127 +716,216 @@ end
 
 --setup the starting tiles of the game
 function prepareStartingTiles()
-    local springExpansion
-    local springPriority = 999
-    local lakeExpansion
-    local lakePriority = 999
-    for rule_id, rule in pairs(startingTileSettings) do
-        if controlPanelSettings[rule_id] then
-            for expansion_id, expansion in pairs(rule) do
-                for item_id, item_settings in pairs(expansion) do
-                    if (item_id == "RiverSpringTile" and item_settings.priority < springPriority) then
-                        springExpansion = expansion_id
-                        springPriority = item_settings.priority
-                    end
-                    if (item_id == "RiverLakeTile" and item_settings.priority < lakePriority) then
-                        lakeExpansion = expansion_id
-                        lakePriority = item_settings.priority
-                    end
-                end
-            end
+
+    --determine if any river expansion will be used as a starting tile
+    local placeRiverAsStartingTile = not controlPanelSettings['RiverMixAll']
+
+    -- Place starting tiles for City of Carcassonne
+    if controlPanelSettings['StartingTileCoC'] then
+        local position_z_offset = 0
+
+        --move starting tiles to make room for the WoF
+        if controlPanelSettings['StartingTileWoF'] then
+            position_z_offset = position_z_offset + (TILE_SPACING * 2)
+        end
+        placeStartingItem('StartingTileCoC', 'CoC', 'CoCStartingTiles', nil, position_z_offset)
+
+        --only use the count if it isn't disabled
+        if not controlPanelSettings['CoCNoCount'] then
+            placeStartingItem('StartingTileCoC', 'CoC', 'CoCCount', nil, 0)
+        end
+
+        -- River can be used, but not as a starting tile
+        placeRiverAsStartingTile = false
+    end
+
+    -- Place starting tiles for WoF
+    if controlPanelSettings['StartingTileWoF'] then
+        local position_z_offset = 0
+
+        --move starting tiles to make room for the CoC
+        if controlPanelSettings['StartingTileCoC'] then
+            position_z_offset = position_z_offset - TILE_SPACING
+        end
+        placeStartingItem('StartingTileWoF', 'WoF', 'WoFStartingTiles', nil, position_z_offset)
+
+        if pigIsEnabled() then
+            placeStartingItem('StartingTileWoF', 'WoF', 'WoFPig', nil, 0)
+        end
+
+        -- River can be used, but not as a starting tile
+        placeRiverAsStartingTile = false
+    end
+
+    -- Place starting tiles for School
+    if controlPanelSettings['StartingTileSchool'] then
+        placeStartingItem('StartingTileSchool', 'School', 'SchoolStartingTiles', nil, 0)
+        placeStartingItem('StartingTileSchool', 'School', 'Teacher', nil, 0)
+    end
+
+    local springTile_expansion_id
+    local forkTile_expansion_id
+
+    --Determine if RiverMixAll option will place all river tiles together in a single pile
+    local overrideRiverLocation
+    if controlPanelSettings['RiverMixAll'] then
+        overrideRiverLocation = defaultRiverLocation
+    end
+
+    --Priorize where the river tiles come from prioritizing GamesQuarterly over RiverII over BB5 River over the original River (CAR ref 237)
+    if controlPanelSettings['GamesQuarterlyTiles'] then
+        springTile_GUID = EXPANSION_BAGS['GamesQuarterly'].contents['RiverSpringTile'].guid
+        springTile_expansion_id = 'GamesQuarterly'
+
+        --HACK: only use GamesQuarterly river tiles if one of the rivers is enabled
+        if controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiverBB5'] or controlPanelSettings['StartingTileRiver'] then
+            placeStartingItem('GamesQuarterlyTiles', 'GamesQuarterly', 'RiverBodyTiles', overrideRiverLocation, 0)
         end
     end
-    for rule_id, rule in pairs(startingTileSettings) do
-        if controlPanelSettings[rule_id] then
-            for expansion_id, expansion in pairs(rule) do
-                for item_id, item_settings in pairs(expansion) do
-                    --HACK: only use the count if it isn't disabled
-                    if item_id ~= 'CoCCount' or not controlPanelSettings['CoCNoCount'] then
-                        if (item_id ~= "RiverSpringTile" or springExpansion == expansion_id) and (item_id ~= "RiverLakeTile" or lakeExpansion == expansion_id) then
-                            --HACK: only use GamesQuarterly river tiles if one of the rivers is enabled
-                            if not (rule_id == 'GamesQuarterlyTiles' and (item_id == "RiverSpringTile" or item_id == "RiverBodyTiles") and not controlPanelSettings['StartingTileRiverII'] and not controlPanelSettings['StartingTileRiver'] and not controlPanelSettings['StartingTileRiverBB5']) then
-                                if item_id == 'WoFPig' and not pigIsEnabled() then break end
-                                prepareStartingTileLock = true
-                                local position = item_settings.position
-                                local rotation = item_settings.rotation
-                                if controlPanelSettings['RiverMixAll'] and (item_id == 'RiverForkTile' or item_id == 'RiverSpringTile' or item_id == 'RiverBodyTiles' or item_id == 'RiverLakeTile') then
-                                    position = defaultRiverLocation.position
-                                    rotation = defaultRiverLocation.rotation
-                                end
-                                if controlPanelSettings['StartingTileWoF'] and controlPanelSettings['StartingTileCoC'] then
-                                    if item_id == 'CoCCount' then
-                                        position.z = position.z + (1.59 * 2) --move to make room for the WoF
-                                    elseif item_id == 'WoFWheel' or item_id == 'WoFPig' then
-                                        position.z = position.z - 1.59 --move to make room for the CoC
-                                    end
-                                end
-                                if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[expansion_id].guid), {guid = EXPANSION_BAGS[expansion_id].contents[item_id].guid, position = position, rotation = rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
-                                    prepareStartingTileLock = false
-                                end
-                                while prepareStartingTileLock do
-                                    coroutine.yield(0)
-                                end
-                                wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
-                                if controlPanelSettings['RiverMixAll'] and item_id ~= 'CoCStartingTiles' then
-                                    if riverBodyTiles_GUID == nil and getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid).getQuantity() > 1  then --HACK: this technically wouldn't work if the first two were only one tile, but for the time being it works
-                                        riverBodyTiles_GUID = EXPANSION_BAGS[expansion_id].contents[item_id].guid
-                                    end
-                                else
-                                    if item_id == "RiverForkTile" and forkTile_GUID == nil then
-                                        forkTile_GUID = EXPANSION_BAGS[expansion_id].contents[item_id].guid
-                                    end
-                                    if item_id == "RiverSpringTile" then
-                                        springTile_GUID = EXPANSION_BAGS[expansion_id].contents[item_id].guid
-                                    end
-                                    if item_id == "RiverLakeTile" then
-                                        lakeTile_GUID = EXPANSION_BAGS[expansion_id].contents[item_id].guid
-                                    end
-                                    if item_id == "RiverBodyTiles" and rule_id ~= 'GamesQuarterlyTiles' and riverBodyTiles_GUID == nil then --HACK: gamesquarterly has a single body tile, so it won't be used as the bodyTileStack
-                                        riverBodyTiles_GUID = EXPANSION_BAGS[expansion_id].contents[item_id].guid
-                                    end
-                                end
-                            end
-                        end
-                        if item_settings.contents ~= nil then
-                            for sub_item_id, sub_item_settings in pairs(item_settings.contents) do
-                                local position = sub_item_settings.position
-                                if controlPanelSettings['StartingTileWoF'] and controlPanelSettings['StartingTileCoC'] then
-                                    if item_id == 'CoCStartingTiles' then
-                                        position.z = position.z + (1.59 * 2) --move to make room for the WoF
-                                    elseif item_id == 'WoFStartingTiles' then
-                                        position.z = position.z - 1.59 --move to make room for the CoC
-                                    end
-                                end
-                                if getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid) ~= nil then
-                                    local params = {guid = EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid,
-                                                    position = position,
-                                                    rotation = sub_item_settings.rotation}
-                                    if sub_item_id == #item_settings.contents - 1 then
-                                        prepareStartingTileLock = true
-                                        params.callback_owner = Global
-                                        params.callback = "prepareStartingTileUnlock"
-                                    end
-                                    -- if item_id == 'WoFStartingTiles' then
-                                    --     params.params = {position = position, rotation = sub_item_settings.rotation}
-                                    --     params.callback = "prepareWoFStartingTile"
-                                    -- end
-                                    getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid).takeObject(params)
-                                else
-                                    local newObj = getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid)
-                                    newObj.setPositionSmooth(position)
-                                    newObj.setRotationSmooth(sub_item_settings.rotation)
-                                    prepareStartingTileLock = false
-                                    wait(1.5)
-                                end
-                                if sub_item_id == #item_settings.contents - 1 then
-                                    while prepareStartingTileLock do
-                                       coroutine.yield(0)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
+
+    --Use RiverII
+    if controlPanelSettings['StartingTileRiverII'] then
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'RiverII'
+        end
+        forkTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverForkTile'].guid
+        forkTile_expansion_id = 'RiverII'
+        lakeTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverLakeTile'].guid
+        riverBodyTiles_GUID = EXPANSION_BAGS['RiverII'].contents['RiverBodyTiles'].guid
+
+        placeStartingItem('StartingTileRiverII', 'RiverII', 'RiverBodyTiles', overrideRiverLocation, 0)
+        placeStartingItem('StartingTileRiverII', 'RiverII', 'RiverLakeTile', overrideRiverLocation, 0)
+    end
+
+    --Use Big Box River
+    if controlPanelSettings['StartingTileRiverBB5'] then
+        placeStartingItem('StartingTileRiverBB5', 'RiverBB5', 'RiverBodyTiles', overrideRiverLocation, 0)
+        if riverBodyTiles_GUID == nil then
+            riverBodyTiles_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverBodyTiles'].guid
+        end
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'RiverBB5'
+        end
+        if lakeTile_GUID == nil then
+            lakeTile_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverLakeTile'].guid
+            placeStartingItem('StartingTileRiverBB5', 'RiverBB5', 'RiverLakeTile', overrideRiverLocation, 0)
         end
     end
-    --HACK: if there is no fork, assign the spring to fork so that it is placed first
-    if forkTile_GUID == nil and springTile_GUID ~= nil then
-        forkTile_GUID = springTile_GUID
-        springTile_GUID = nil
+
+    --Use RiverI
+    if controlPanelSettings['StartingTileRiver'] then
+        placeStartingItem('StartingTileRiver', 'River', 'RiverBodyTiles', overrideRiverLocation, 0)
+        if riverBodyTiles_GUID == nil then
+            riverBodyTiles_GUID = EXPANSION_BAGS['River'].contents['RiverBodyTiles'].guid
+        end
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['River'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'River'
+        end
+        if lakeTile_GUID == nil then
+            lakeTile_GUID = EXPANSION_BAGS['River'].contents['RiverLakeTile'].guid
+            placeStartingItem('StartingTileRiver', 'River', 'RiverLakeTile', overrideRiverLocation, 0)
+        end
     end
+
+    --Place the spring tile
+    if springTile_GUID ~= nil then
+        --Initialize the position and rotation as if this is a starting tile
+        riverSpringTile_Location = startingRiverSpringTileLocation
+        if controlPanelSettings['RiverMixAll'] then
+            riverSpringTile_Location = defaultRiverLocation
+        elseif not placeRiverAsStartingTile then
+            riverSpringTile_Location = riverSpringTileLocation
+        end
+
+        if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[springTile_expansion_id].guid), {guid = springTile_GUID, position = riverSpringTile_Location.position, rotation = riverSpringTile_Location.rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+            prepareStartingTileLock = false
+        end
+        while prepareStartingTileLock do
+            coroutine.yield(0)
+        end
+        wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+    end
+
+    --Place the river fork tile
+    if forkTile_GUID ~= nil then
+        --Initialize the position and rotation as if this is a starting tile
+        riverForkTile_Location = startingRiverForkTileLocation
+        if controlPanelSettings['RiverMixAll'] then
+            startingRiverForkTileLocation = defaultRiverLocation
+        elseif not placeRiverAsStartingTile then
+            startingRiverForkTileLocation = riverForkLocation
+        end
+        if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[forkTile_expansion_id].guid), {guid = forkTile_GUID, position = startingRiverForkTileLocation.position, rotation = startingRiverForkTileLocation.rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+            prepareStartingTileLock = false
+        end
+        while prepareStartingTileLock do
+            coroutine.yield(0)
+        end
+        wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+    end
+
     prepareStartingTilesFinished = true
     return 1
+end
+
+--Helper function to place a starting item
+function placeStartingItem(starting_tile_id, expansion_id, item_id, location_override, sub_item_position_z_offset)
+
+    local item_settings = startingTileSettings[starting_tile_id][expansion_id][item_id]
+
+    prepareStartingTileLock = true
+    local position = item_settings.position
+    if location_override ~= nil then
+        position = location_override.position
+    end
+    local rotation = item_settings.rotation
+    if location_override ~= nil then
+        rotation = location_override.rotation
+    end
+
+    if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[expansion_id].guid), {guid = EXPANSION_BAGS[expansion_id].contents[item_id].guid, position = position, rotation = rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+        prepareStartingTileLock = false
+    end
+    while prepareStartingTileLock do
+        coroutine.yield(0)
+    end
+    wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+
+    if item_settings.contents ~= nil then
+        for sub_item_id, sub_item_settings in pairs(item_settings.contents) do
+            local position = sub_item_settings.position
+            position.z = position.z + sub_item_position_z_offset
+            if getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid) ~= nil then
+                local params = {guid = EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid,
+                                position = position,
+                                rotation = sub_item_settings.rotation}
+                if sub_item_id == #item_settings.contents - 1 then
+                    prepareStartingTileLock = true
+                    params.callback_owner = Global
+                    params.callback = "prepareStartingTileUnlock"
+                end
+                -- if item_id == 'WoFStartingTiles' then
+                --     params.params = {position = position, rotation = sub_item_settings.rotation}
+                --     params.callback = "prepareWoFStartingTile"
+                -- end
+                getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid).takeObject(params)
+            else
+                local newObj = getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid)
+                newObj.setPositionSmooth(position)
+                newObj.setRotationSmooth(sub_item_settings.rotation)
+                prepareStartingTileLock = false
+                wait(1.5)
+            end
+            if sub_item_id == #item_settings.contents - 1 then
+                while prepareStartingTileLock do
+                   coroutine.yield(0)
+                end
+            end
+        end
+    end
 end
 
 --unlocks the preparePlayerStartingItems coroutine
