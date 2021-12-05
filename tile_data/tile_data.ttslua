@@ -664,7 +664,7 @@ function getTileDataForTile(tile)
         return {
             symmetry = tile.getVar("symmetry"),
             ignoredFeatures = tile.getTable("ignoredFeatures"),
-            isStartingTile = tile.getVar("isStartingTile"),
+            isStartingPiece = tile.getVar("isStartingPiece"),
             sides = tile.getTable("sides"),
             linkedQuadrants = tile.getTable("linkedQuadrants"),
             linkedOctants = tile.getTable("linkedOctants"),

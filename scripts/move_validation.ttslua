@@ -339,7 +339,7 @@ function isValidTileLocation(tile, tileRotation, xIndex, zIndex, verbose)
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_TILE_FEATURES_DONT_MATCH"}, activePlayers[currentPlayer]) end
         return false
     end
-    local tileData = getTileDataForTile(tile)
+
     if tileData.sides[1] == 'Abbey' and
     ((not tileGridOccupied(xIndex + 1, zIndex)) or (not tileGridOccupied(xIndex - 1, zIndex)) or (not tileGridOccupied(xIndex, zIndex + 1)) or (not tileGridOccupied(xIndex, zIndex - 1))) then
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_ABBEY"}, activePlayers[currentPlayer]) end
