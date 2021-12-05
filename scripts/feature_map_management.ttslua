@@ -59,7 +59,14 @@ function addTile(xIndex, zIndex, tile, rotation, temp)
             finalTile_GUID = nil
         end
         if tile.getGUID() == finalRiverTile_GUID then
+            --Final river stack tile has been played.  Free up the regular tile stack
+            --and place the river lake tile
             finalRiverTile_GUID = nil
+
+            local tileStack = getObjectFromGUID(tileStack_GUID)
+            tileStack.setLock(false)
+            tileStack.interactable = true
+
         end
         if tile.getGUID() == forkTile_GUID then
             forkTile_GUID = nil

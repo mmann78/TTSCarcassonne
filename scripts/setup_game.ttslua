@@ -540,12 +540,12 @@ function startGame()
     tileStack.shuffle()
     if controlPanelSettings['StartingTileRiverII'] then
         allGameMessage({"MESSAGE_SETUP_RIVER_II_NOTIFICATION"}, NEUTRAL_COLOR)
-        -- tileStack.setLock(true)
-        -- tileStack.interactable = false
+        tileStack.setLock(true)
+        tileStack.interactable = false
     elseif controlPanelSettings['StartingTileRiver'] or controlPanelSettings['StartingTileRiverBB5'] then
         allGameMessage({"MESSAGE_SETUP_RIVER_NOTIFICATION"}, NEUTRAL_COLOR)
-        -- tileStack.setLock(true)
-        -- tileStack.interactable = false
+        tileStack.setLock(true)
+        tileStack.interactable = false
     end
     allGameMessage({"MESSAGE_SETUP_START"}, NEUTRAL_COLOR)
     allGameMessage({"MESSAGE_SETUP_FIRST_PLAYER", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
