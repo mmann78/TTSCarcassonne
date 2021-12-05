@@ -1,8 +1,87 @@
 --Encapsulate the behavior of the Inns and Cathedrals expansion (InC)
 
---Scoring data specific to expansion
-function InCInitializeScoreSummary(player)
 
+--Player scoring data specific to expansion
+function InCInitializeAdditionalPlayerStats(player)
+    --[[
+    For now, the stats for the expansion will be created as inns and cathedrals
+    are scored so that players that don't score them will have "nil" stats
+    which is different than having a value of 0
+    ]]--
+end
+
+--Track stats for cathedrals
+function InCScoredCathedrals(playerStats, featureListSpecialFigures, points, numElements)
+
+    --Cathedrals must be configured to track the stats
+    if not controlPanelSettings['InCCathedrals'] then return end
+
+    local containsCathedrals = false
+    for _, feature in ipairs(featureListSpecialFigures) do
+        if feature == 'Cathedral' then
+            containsCathedrals = true
+            break
+        end
+    end
+
+    --Only interested if there is a cathedral as a feature
+    if not containsCathedrals then return end
+
+    if playerStats['Cathedrals Scored'] == nil then
+        -- Stats are created here so that players that don't score with cathedrals are "nil" (which is different than 0)
+        playerStats['Cathedrals Scored'] = 0
+        playerStats['Cathedral Points'] = 0
+    end
+
+    playerStats['Cathedrals Scored'] = playerStats['Cathedrals Scored'] + 1
+    playerStats['Cathedral Points'] = playerStats['Cathedral Points'] + points
+
+    --Track the number of cathedrals that aren't finished at the end of the
+    --game that results in 0 points
+    if points == 0 then
+        if playerStats['Cathedrals Unfinished'] == nil then
+            playerStats['Cathedrals Unfinished'] = 0
+        end
+
+        playerStats['Cathedrals Unfinished'] = playerStats['Cathedrals Unfinished'] + 1
+    end
+end
+
+--Track stats for inns
+function InCScoredInns(playerStats, featureListSpecialFigures, points, numElements)
+
+    --Inns must be configured to track the stats
+    if not controlPanelSettings['InCInns'] then return end
+
+    local containsInns = false
+    for _, feature in ipairs(featureListSpecialFigures) do
+        if feature == 'Inn' then
+            containsInns = true
+            break
+        end
+    end
+
+    --Only interested if there is an inn
+    if not containsInns then return end
+
+    if playerStats['Inns Scored'] == nil then
+        -- Stats are created here so that players that don't score with inns are "nil" (which is different than 0)
+        playerStats['Inns Scored'] = 0
+        playerStats['Inn Points'] = 0
+    end
+
+    playerStats['Inns Scored'] = playerStats['Inns Scored'] + 1
+    playerStats['Inn Points'] = playerStats['Inn Points'] + points
+
+    --Track the number of inns that aren't finished at the end of the
+    --game that results in 0 points
+    if points == 0 then
+        if playerStats['Inns Unfinished'] == nil then
+            playerStats['Inns Unfinished'] = 0
+        end
+
+        playerStats['Inns Unfinished'] = playerStats['Inns Unfinished'] + 1
+    end
 
 end
 

@@ -47,8 +47,7 @@ function onload(save_state)
         activePlayers = saved_data.activePlayers
         currentPlayer = saved_data.currentPlayer
         scoreSummary = saved_data.scoreSummary
-        largestCity = saved_data.largestCity
-        longestRoad = saved_data.longestRoad
+        statsLoadData(saved_data)
         playerPossessionScriptingZones = saved_data.playerPossessionScriptingZones
         player_color_tints = saved_data.player_color_tints
         score_counter_guids = saved_data.score_counter_guids
@@ -175,12 +174,10 @@ function onSave()
         handColor = handColor,
         hasAlreadyUsedFlier = hasAlreadyUsedFlier,
         hasRansomedPrisoner = hasRansomedPrisoner,
-        largestCity = largestCity,
         lastPlacedPlayerTiles = lastPlacedPlayerTiles,
         lastPlacedTileX = lastPlacedTileX,
         lastPlacedTileZ = lastPlacedTileZ,
         linkedFeatures = linkedFeatures,
-        longestRoad = longestRoad,
         numberActiveTowers = numberActiveTowers,
         placedFerries = placedFerries,
         playerPossessionScriptingZones = playerPossessionScriptingZones,
@@ -199,6 +196,7 @@ function onSave()
         turnState = turnState,
         wofPigPosition = wofPigPosition
     }
+    statsSaveData(toSave)
     riverSaveData(toSave)
     AnMSaveData(toSave)
     TnBSaveData(toSave)

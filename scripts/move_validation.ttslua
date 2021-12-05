@@ -248,6 +248,7 @@ function checkFigurePlacement(params)
         if turnState == 'awaiting figure decision' and (xIndex ~= lastPlacedTileX or zIndex ~= lastPlacedTileZ) then
             PnDSetAlreadyUsedMagicPortal(true)
         end
+        riverFigurePlacement(newFigure, tileGrid[lastPlacedTileX][lastPlacedTileZ])
         return nextState('placed figure')
     end
 end

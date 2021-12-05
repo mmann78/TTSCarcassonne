@@ -5,6 +5,8 @@ local KnRBRobber_GUID
 local KnRBKing_GUID
 local CoCCount_GUID
 
+--Stats for this are computed regardless of whether the King or Robber is being used, but since
+--their role requires it, it's being tracked here
 local longestNewRoad
 local largestNewCity
 
@@ -27,40 +29,54 @@ end
 
 --Check each individual feature position of the map for longest road/largest city
 function KnRBCheckFeatureMap(feature)
-    if controlPanelSettings['KnRBRobber'] and feature.nameOfFeature == 'Road' and feature.numTiles > longestNewRoad then
+    if feature.nameOfFeature == 'Road' and feature.numTiles > longestNewRoad then
         longestNewRoad = feature.numTiles
-    elseif controlPanelSettings['KnRBKing'] and feature.nameOfFeature == 'City' and feature.numTiles > largestNewCity then
+    elseif feature.nameOfFeature == 'City' and feature.numTiles > largestNewCity then
         largestNewCity = feature.numTiles
     end
 end
 
 --check if the new tile has completed the biggest city/longest road and award token
 function KnRBCheckFeature()
-    if controlPanelSettings['KnRBRobber'] and longestNewRoad > longestRoad then
-        longestRoad = longestNewRoad
-        local awardToken = getObjectFromGUID(KnRBRobber_GUID)
-        local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBRobber'].x, PLAYER_POSSESSION_POSITIONS['KnRBRobber'].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
-        if awardToken ~= nil then
-            awardToken.setPositionSmooth({player_possession_areas[activePlayers[currentPlayer]].x + x, 2, player_possession_areas[activePlayers[currentPlayer]].z + z})
-            awardToken.setRotationSmooth({0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0})
-            awardToken.setDescription(longestRoad .. " tiles")
-            allGameMessage({"MESSAGE_ROBBER_BARON_AWARD", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{n1}', longestRoad}}, player_color_tints[activePlayers[currentPlayer]])
-        else
-            allErrorMessage({"MESSAGE_ROBBER_BARON_ERROR_MISSING"})
+    local player = activePlayers[currentPlayer]
+
+    if longestNewRoad > globalStats["LongestRoad"].numTiles then
+        --Keep track of which player had the longest road
+        globalStats["LongestRoad"].numTiles = longestNewRoad
+        globalStats["LongestRoad"].player = player
+
+        --Let everyone know the longest road if playing with the robber
+        if controlPanelSettings['KnRBRobber'] then
+            local awardToken = getObjectFromGUID(KnRBRobber_GUID)
+            local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBRobber'].x, PLAYER_POSSESSION_POSITIONS['KnRBRobber'].z, player_possession_areas[player].rotation)
+            if awardToken ~= nil then
+                awardToken.setPositionSmooth({player_possession_areas[player].x + x, 2, player_possession_areas[player].z + z})
+                awardToken.setRotationSmooth({0,  player_possession_areas[player].rotation * -90, 0})
+                awardToken.setDescription(longestNewRoad .. " tiles")
+                allGameMessage({"MESSAGE_ROBBER_BARON_AWARD", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', longestNewRoad}}, player_color_tints[player])
+            else
+                allErrorMessage({"MESSAGE_ROBBER_BARON_ERROR_MISSING"})
+            end
         end
     end
 
-    if controlPanelSettings['KnRBKing'] and largestNewCity > largestCity then
-        largestCity = largestNewCity
-        local awardToken = getObjectFromGUID(KnRBKing_GUID)
-        local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBKing'].x, PLAYER_POSSESSION_POSITIONS['KnRBKing'].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
-        if awardToken ~= nil then
-            awardToken.setPositionSmooth({player_possession_areas[activePlayers[currentPlayer]].x + x, 2, player_possession_areas[activePlayers[currentPlayer]].z + z})
-            awardToken.setRotationSmooth({0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0})
-            awardToken.setDescription(largestCity .. " tiles")
-            allGameMessage({"MESSAGE_KING_AWARD", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{n1}', largestCity}}, player_color_tints[activePlayers[currentPlayer]])
-        else
-            allErrorMessage({"MESSAGE_KING_ERROR_MISSING"})
+    if largestNewCity > globalStats["LargestCity"].numTiles then
+        --Keep track of which player had the largest city
+        globalStats["LargestCity"].numTiles = largestNewCity
+        globalStats["LargestCity"].player = player
+
+        --Let everyone know the largest city if playing with the king
+        if controlPanelSettings['KnRBKing'] then
+            local awardToken = getObjectFromGUID(KnRBKing_GUID)
+            local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBKing'].x, PLAYER_POSSESSION_POSITIONS['KnRBKing'].z, player_possession_areas[player].rotation)
+            if awardToken ~= nil then
+                awardToken.setPositionSmooth({player_possession_areas[player].x + x, 2, player_possession_areas[player].z + z})
+                awardToken.setRotationSmooth({0,  player_possession_areas[player].rotation * -90, 0})
+                awardToken.setDescription(largestNewCity .. " tiles")
+                allGameMessage({"MESSAGE_KING_AWARD", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', largestNewCity}}, player_color_tints[player])
+            else
+                allErrorMessage({"MESSAGE_KING_ERROR_MISSING"})
+            end
         end
     end
 end

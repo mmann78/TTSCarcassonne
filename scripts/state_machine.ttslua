@@ -519,7 +519,7 @@ function playerStateHandler()
     elseif turnState == 'check for extra builder turn' then
         CoCLockCount()
         clearArbitraryButtons(true)
-        if TnBCheckBuilderAwaitingAction() then
+        if TnBCheckBuilderAwaitingAction(activePlayers[currentPlayer]) then
             return nextState('has builder')
         else
             return nextState('no builder')

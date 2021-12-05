@@ -3,6 +3,13 @@
 local wagonFeatures = {}
 local newBarn = nil
 
+--Player scoring data specific to expansion
+function AnMInitializeAdditionalPlayerStats(player)
+    if controlPanelSettings['AnMWagon'] then
+        player['Wagon Moves'] = 0
+    end
+end
+
 --Clear data for the start of the next player's turn
 function AnMBeginTurn()
     wagonFeatures = {}
@@ -23,6 +30,11 @@ function AnMCheckReplaceFinishedWagons(newFigure, featureNum, player)
     end
     if not AnMIsValidWagonLocation(newFigure, featureNum, player, true) then
         return false
+    end
+
+    --Keep track of the wagon moves done by the player
+    if additionalPlayerStats[player]['Wagon Moves'] ~= nil then
+        additionalPlayerStats[player]['Wagon Moves'] = additionalPlayerStats[player]['Wagon Moves'] + 1
     end
 
     wagonFeatures[player] = nil

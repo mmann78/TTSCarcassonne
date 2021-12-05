@@ -297,8 +297,6 @@ followersScored = {}
 featureMarkers = {}
 scoringRewards = {}
 
-largestCity = 0
-longestRoad = 0
 scoreSummary = {}
 activePlayers = {}
 currentPlayer = nil
@@ -500,6 +498,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\tile_data\tile_data
 
 #include !\TTSCarcassonne\scripts\localization
+
+#include !\TTSCarcassonne\scripts\stats
 
 #include !\TTSCarcassonne\scripts\setup_helpers
 

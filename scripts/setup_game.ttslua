@@ -408,6 +408,8 @@ function startGame()
     prepareNeutralItemsFinished = false
     prepareStartingTilesFinished = false
     initializeScoreSummary()
+    statsInitializeAdditionalPlayerStats()
+    statsInitializeGlobalStats()
     if not controlPanelSettings['StartingTileBase'] then
         --since the base starting tile is already on the table, remove if disabled
         local baseStartingTile = getObjectFromGUID(BASE_STARTING_TILE_GUID)

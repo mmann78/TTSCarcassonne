@@ -10,6 +10,12 @@ function TnBInitializeScoreSummary(player)
     end
 end
 
+function TnBInitializeAdditionalPlayerStats(player)
+    if controlPanelSettings['TnBBuilder'] then
+        player['Extra Builder Tiles'] = 0
+    end
+end
+
 --Immediately award trade tokens
 function TnBCheckFeatureMap(feature)
     if controlPanelSettings['TnBTradeGoods'] and feature.nameOfFeature == 'City' then
@@ -146,10 +152,13 @@ function TnBBuilderClearTakenBuilderTile()
     hasAlreadyTakenBuilderTile = false
 end
 
-function TnBCheckBuilderAwaitingAction()
+function TnBCheckBuilderAwaitingAction(player)
     if hasBuilderAwaitingAction then
         hasAlreadyTakenBuilderTile = true
-        allGameMessage({"MESSAGE_BUILDER_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+        allGameMessage({"MESSAGE_BUILDER_PROMPT", {'{p1}', getPlayerOwnerName(player)}}, player_color_tints[player], player)
+
+        --Keep stats on the number of builder turns
+        additionalPlayerStats[player]['Extra Builder Tiles'] = additionalPlayerStats[player]['Extra Builder Tiles'] + 1
         return true
     end
     return false

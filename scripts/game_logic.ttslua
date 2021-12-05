@@ -248,7 +248,6 @@ function initializeScoreSummary()
         scoreSummary[player_color]['Road'] = 0
         scoreSummary[player_color]['Field'] = 0
         scoreSummary[player_color]['Cloister'] = 0
-        InCInitializeScoreSummary(scoreSummary[player_color])
         TnBInitializeScoreSummary(scoreSummary[player_color])
         if controlPanelSettings['HnSShepherd'] then
             scoreSummary[player_color]['Shepherd'] = 0
@@ -268,7 +267,9 @@ function initializeScoreSummary()
 end
 
 function scorePoints(player, feature, points)
-    if feature == 'Abbey' or feature == 'Shrine' or feature == 'Garden' or feature == "Baba Yaga's Hut" then feature = 'Cloister' end --these don't really need a seperate category
+    if feature == 'Abbey' or feature == 'Shrine' or feature == 'Garden' or feature == "Baba Yaga's Hut" then
+        feature = 'Cloister'  --these don't really need a seperate category
+    end
     if scoreSummary[player][feature] == nil then
         allErrorMessage("ERROR: " .. feature .. " is not valid. Please remove this figure.")
         return
@@ -1248,6 +1249,8 @@ function checkAddedTileFeatureExtensions()
 
                 --unlike the above, can immediately award trade tokens
                 TnBCheckFeatureMap(feature)
+
+                statsHandleFeatureComplete(feature)
             end
             featureVisited[featureNum] = true
         end
@@ -1390,8 +1393,10 @@ function retrieveAbbotButton(object, sPlayer)
             getFeatureComponents(xIndex, zIndex, closestTilePosition, 2, true)
             if nameOfFeature == 'Garden' or nameOfFeature == 'Cloister' or nameOfFeature == 'Abbey' then
                 score = #traversedTileCoords
-                allGameMessage({"MESSAGE_ABBOT_RETRIEVE", {'{p1}', getPlayerOwnerName(object.getVar('owner'))}, {'{n1}', score}, {'{s1}', translate(nameOfFeature)}}, player_color_tints[object.getVar('owner')])
-                scorePoints(object.getVar('owner'), nameOfFeature, score)
+                local player = object.getVar('owner')
+                allGameMessage({"MESSAGE_ABBOT_RETRIEVE", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', score}, {'{s1}', translate(nameOfFeature)}}, player_color_tints[player])
+                statsScoredFeatures(player, nameOfFeature, false, {object}, nil, nil, score, score)
+                scorePoints(player, nameOfFeature, score)
                 table.insert(removedFigures, {guid=object.getGUID(), winner=true})
                 object.setLock(false)
                 object.use_gravity = false
@@ -2130,9 +2135,15 @@ function scoreFeatures()
                         --find the relative weights for the followers on this feature
                         for _, follower in ipairs(featureFollowers) do
                             local weight = 0
-                            if follower.getVar('figureName') == 'Follower' or follower.getVar('figureName') == 'Wagon' or follower.getVar('figureName') == 'Phantom' or follower.getVar('figureName') == 'Abbot' then weight = 1
-                            elseif follower.getVar('figureName') == 'Big Follower' then weight = 2
-                            elseif follower.getVar('figureName') == 'Mayor' then
+                            local followerFigureName = follower.getVar('figureName')
+                            if followerFigureName == 'Follower' or
+                               followerFigureName == 'Wagon' or
+                               followerFigureName == 'Phantom' or
+                               followerFigureName == 'Abbot' then
+                                   weight = 1
+                            elseif followerFigureName == 'Big Follower' then
+                                   weight = 2
+                            elseif followerFigureName == 'Mayor' then
                                 for _, specialFeature in ipairs(featureList[featureNum].specialFeatures) do
                                     if specialFeature == 'Pennant' then weight = weight + 1 end
                                 end
@@ -2162,7 +2173,9 @@ function scoreFeatures()
                                 --if the follower is on a hill, add a small value to it to break any ties
                                 followerCounts[player_color] = followerCounts[player_color] + 0.001
                             end
-                            if followerCounts[player_color] > topWeight then topWeight = followerCounts[player_color] end
+                            if followerCounts[player_color] > topWeight then
+                                topWeight = followerCounts[player_color]
+                            end
                         end
 
                         for _, figure in ipairs(featureSpecialFigures) do
@@ -2189,9 +2202,11 @@ function scoreFeatures()
                             return
                         end
                         local score = 0
+                        local numElements = 0   -- Base score for a feature.  Usually "number of tiles", but for fields would be number of cities closed
                         local containsPigHerd = false
                         if nameOfFeature == 'City' then
                             score = featureList[featureNum].numTiles
+                            numElements = score
                             local containsCathedral = false
                             for _, feature in ipairs(featureList[featureNum].specialFeatures) do
                                 if feature == 'Pennant' then
@@ -2228,9 +2243,11 @@ function scoreFeatures()
                                     end
                                 end
                             end
+                            numElements = score
                             featureComplete = false --so that this feature won't be scored before the end of the game
                         elseif nameOfFeature == 'Road' then
                             score = featureList[featureNum].numTiles
+                            numElements = score
                             local containsInn = false
                             for _, feature in ipairs(featureList[featureNum].specialFeatures) do
                                 if feature == 'Inn' and controlPanelSettings['InCInns'] then
@@ -2246,6 +2263,7 @@ function scoreFeatures()
                             end
                         elseif table.contains(CLOISTER_FEATURES, nameOfFeature) then
                             score = featureList[featureNum].numTiles
+                            numElements = score
                             if featureComplete and controlPanelSettings['HnSVineyards'] then
                                 for _, feature in ipairs(featureList[featureNum].specialFeatures) do
                                     if feature == 'Vineyard' then
@@ -2308,9 +2326,11 @@ function scoreFeatures()
                             end
                         elseif nameOfFeature == "Baba Yaga's Hut" then
                             score = 10 - featureList[featureNum].numTiles
+                            numElements = featureList[featureNum].numTiles
                             --unclear if vineyards should be counted. Leaving out for now
                         elseif nameOfFeature == "Garden" then
                             score = featureList[featureNum].numTiles
+                            numElements = score
                         end
                         for player, value in pairs(followerCounts) do
                             if nameOfFeature ~= 'Carcassonne' and string.sub(nameOfFeature,1,8) ~= 'Quarter-' and string.sub(nameOfFeature,1,6) ~= 'Crown-' and nameOfFeature ~= 'Tower Foundation' and string.sub(nameOfFeature,1,6) ~= 'Flier' then
@@ -2337,6 +2357,7 @@ function scoreFeatures()
                                             playerScore = score * scoreMultiplier
                                         end
                                         allGameMessage({"MESSAGE_SCORE", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', playerScore}, {'{f1}', translate(nameOfFeature)}}, player_color_tints[player]) -- .. " with a strength of " .. value .. " followers", player_color_tints[player])
+                                        statsScoredFeatures(player, nameOfFeature, featureComplete, featureFollowers, featureSpecialFigures, featureList[featureNum].specialFeatures, playerScore, numElements)
                                         scorePoints(player, nameOfFeature, playerScore)
                                     elseif value > 0 then
                                         --allGameMessage(player .. " did not score any points with a strength of only " .. value .. " followers", player_color_tints[player])
@@ -2511,6 +2532,26 @@ function scoreFeatures()
             playerNum = playerNum + 1
             lastHighscore = highscore
         end
+
+        for playerIndex, player in ipairs(activePlayers) do
+            local scoreCounter = getObjectFromGUID(score_counter_guids[player])
+            local statsMessage = getPlayerOwnerName(player) .. ": " .. scoreCounter.Counter.getValue() .. " points \n"
+            for field, value in pairs(scoreSummary[player]) do
+                local valuePercentage = ""
+                if scoreCounter.Counter.getValue() > 0 then
+                    valuePercentage = string.format(" (%d%%)", (value / scoreCounter.Counter.getValue())*100)
+                end
+                statsMessage = statsMessage .. field .. ": " .. value .. valuePercentage .. "\n"
+            end
+            for field, value in pairs(additionalPlayerStats[player]) do
+                statsMessage = statsMessage .. field .. ": " .. value .. "\n"
+            end
+
+            allGameMessage(statsMessage, player_color_tints[player])
+        end
+
+        statsDisplayGlobalStats()
+
         allGameMessage({"MESSAGE_GAME_OVER"}, NEUTRAL_COLOR)
         allGameMessage({"MESSAGE_GAME_OVER_PROMOTE"}, NEUTRAL_COLOR)
         return nextState('finished')

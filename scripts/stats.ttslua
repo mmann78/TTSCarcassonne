@@ -1,0 +1,233 @@
+--Track stats within the game
+
+-- Supplementary per player statistics that are not direct scoring
+additionalPlayerStats = {}
+-- Supplementary game statistics
+globalStats = {}
+
+function statsInitializeGlobalStats()
+    globalStats = {}
+    globalStats["LongestRoad"] = {player=nil, numTiles=0}
+    globalStats["LargestCity"] = {player=nil, numTiles=0}
+    globalStats["LargestPointCity"] = {players=nil, points=0}
+    globalStats["LargestPointRoad"] = {players=nil, points=0}
+    globalStats["LargestFarm"] = {players=nil, numCities=0}
+    globalStats["LargestPointFarm"] = {players=nil, points=0}
+end
+
+function statsInitializeAdditionalPlayerStats()
+    additionalPlayerStats = {}
+    for _, player_color in ipairs(activePlayers) do
+        additionalPlayerStats[player_color] = {}
+        local playerStats = additionalPlayerStats[player_color]
+        playerStats['Cities Closed'] = 0
+        playerStats['Cities Scored'] = 0
+        playerStats['City Tiles Scored'] = 0
+        playerStats['Roads Closed'] = 0
+        playerStats['Roads Scored'] = 0
+        playerStats['Road Tiles Scored'] = 0
+        if controlPanelSettings['CIIAbbot'] then
+            playerStats['Abbot Cloisters'] = 0
+        end
+        playerStats['Cloisters'] = 0
+        playerStats['Pennants'] = 0
+        TnBInitializeAdditionalPlayerStats(playerStats)
+        InCInitializeAdditionalPlayerStats(playerStats)
+        AnMInitializeAdditionalPlayerStats(playerStats)
+        riverInitializeAdditionalPlayerStats(playerStats)
+    end
+end
+
+function statsScoredFeatures(player, nameOfFeature, featureComplete, featureFollowers, featureSpecialFigures, featureListSpecialFigures, points, numElements)
+    local playerStats = additionalPlayerStats[player]
+    if nameOfFeature == 'City' then
+        if playerStats['Cities Scored'] == nil then
+            return
+        end
+        playerStats['Cities Scored'] = playerStats['Cities Scored'] + 1
+        playerStats['City Tiles Scored'] = playerStats['City Tiles Scored'] + numElements
+        if points >= globalStats["LargestPointCity"].points then
+            if points > globalStats["LargestPointCity"].points then
+                globalStats["LargestPointCity"].players = {player}
+                globalStats["LargestPointCity"].points = points
+            else
+                table.insert(globalStats["LargestPointCity"].players, player)
+            end
+        end
+        --Compute the number of pennants scored
+        for _, feature in ipairs(featureListSpecialFigures) do
+            if feature == 'Pennant' then
+                playerStats['Pennants'] = playerStats['Pennants'] + 1
+            end
+        end
+        InCScoredCathedrals(playerStats, featureListSpecialFigures, points, numElements)
+    elseif nameOfFeature == 'Road' then
+        if playerStats['Roads Scored'] == nil then
+            return
+        end
+        playerStats['Roads Scored'] = playerStats['Roads Scored'] + 1
+        playerStats['Road Tiles Scored'] = playerStats['Road Tiles Scored'] + numElements
+        if points >= globalStats["LargestPointRoad"].points then
+            if points > globalStats["LargestPointRoad"].points then
+                globalStats["LargestPointRoad"].players = {player}
+                globalStats["LargestPointRoad"].points = points
+            else
+                table.insert(globalStats["LargestPointRoad"].players, player)
+            end
+        end
+        InCScoredInns(playerStats, featureListSpecialFigures, points, numElements)
+    elseif nameOfFeature == 'Cloister' then
+        if playerStats['Cloisters'] == nil then
+            return
+        end
+        playerStats['Cloisters'] = playerStats['Cloisters'] + 1
+        --Track if abbot was used to score the cloister
+        if featureFollowers ~= nil then
+            for _, follower in ipairs(featureFollowers) do
+                if follower.getVar('figureName') == 'Abbot' then
+                    --Just in case abbot is used, but not chosen in the control panel
+                    if playerStats['Abbot Cloisters'] == nil then
+                        playerStats['Abbot Cloisters'] = 0
+                    end
+                    playerStats['Abbot Cloisters'] = playerStats['Abbot Cloisters'] + 1
+                end
+            end
+        end
+    elseif nameOfFeature == 'Field' then
+        --Determine if this breaks the record for largest number of points scored for a farm
+        if globalStats["LargestPointFarm"] == nil then
+            globalStats["LargestPointFarm"] = {players=nil, points=0}
+        end
+        if points >= globalStats["LargestPointFarm"].points then
+            if points > globalStats["LargestPointFarm"].points then
+                globalStats["LargestPointFarm"].players = {player}
+                globalStats["LargestPointFarm"].points = points
+            else
+                table.insert(globalStats["LargestPointFarm"].players, player)
+            end
+        end
+
+        --Determine if this breaks the record for largest cities scored for a farm
+        if globalStats["LargestFarm"] == nil then
+            globalStats["LargestFarm"] = {players=nil, numCities=0}
+        end
+        if numElements >= globalStats["LargestFarm"].numCities then
+            if numElements > globalStats["LargestFarm"].numCities then
+                globalStats["LargestFarm"].players = {player}
+                globalStats["LargestFarm"].numCities = numElements
+            else
+                table.insert(globalStats["LargestFarm"].players, player)
+            end
+        end
+    end
+end
+
+function statsHandleFeatureComplete(feature)
+    local playerStats = additionalPlayerStats[activePlayers[currentPlayer]]
+
+    if feature.nameOfFeature == 'Road' then
+        playerStats['Roads Closed'] = playerStats['Roads Closed'] + 1
+    elseif feature.nameOfFeature == 'City' then
+        playerStats['Cities Closed'] = playerStats['Cities Closed'] + 1
+    end
+end
+
+function statsDisplayGlobalStats()
+    local playerName
+
+    --Largest city (by tiles)
+    if globalStats["LargestCity"].player ~= nil then
+        playerName = getPlayerOwnerName(globalStats["LargestCity"].player)
+    else
+        playerName = translate("Unknown player")
+    end
+    allGameMessage({"MESSAGE_SCORE_CLOSED_LARGEST_CITY", {'{p1}', playerName}, {'{n1}', globalStats["LargestCity"].numTiles}}, NEUTRAL_COLOR)
+
+    --Largest city (by points)
+    if globalStats["LargestPointCity"] ~= nil then
+        if globalStats["LargestPointCity"].players ~= nil then
+            playerName = ""
+            for _, player in ipairs(globalStats["LargestPointCity"].players) do
+                if playerName ~= "" then
+                    playerName = playerName .. ", "
+                end
+                playerName = playerName .. getPlayerOwnerName(player)
+            end
+        else
+            playerName = translate("Unknown player")
+        end
+        allGameMessage({"MESSAGE_SCORE_LARGEST_CITY_POINTS", {'{p1}', playerName}, {'{n1}', globalStats["LargestPointCity"].points}}, NEUTRAL_COLOR)
+    end
+
+    --Longest road (by tiles)
+    if globalStats["LongestRoad"].player ~= nil then
+        playerName = getPlayerOwnerName(globalStats["LongestRoad"].player)
+    else
+        playerName = translate("Unknown player")
+    end
+    allGameMessage({"MESSAGE_SCORE_CLOSED_LONGEST_ROAD", {'{p1}', playerName}, {'{n1}', globalStats["LongestRoad"].numTiles}}, NEUTRAL_COLOR)
+
+    --Longest road (by points)
+    if globalStats["LargestPointRoad"] ~= nil then
+        if globalStats["LargestPointRoad"].players ~= nil then
+            playerName = ""
+            for _, player in ipairs(globalStats["LargestPointRoad"].players) do
+                if playerName ~= "" then
+                    playerName = playerName .. ", "
+                end
+                playerName = playerName .. getPlayerOwnerName(player)
+            end
+        else
+            playerName = translate("Unknown player")
+        end
+        allGameMessage({"MESSAGE_SCORE_LONGEST_ROAD_POINTS", {'{p1}', playerName}, {'{n1}', globalStats["LargestPointRoad"].points}}, NEUTRAL_COLOR)
+    end
+
+    --Largest farm (by cities)
+    if globalStats["LargestFarm"].players ~= nil then
+        playerName = ""
+        for _, player in ipairs(globalStats["LargestFarm"].players) do
+            if playerName ~= "" then
+                playerName = playerName .. ", "
+            end
+            playerName = playerName .. getPlayerOwnerName(player)
+        end
+    else
+        playerName = translate("Unknown player")
+    end
+    allGameMessage({"MESSAGE_SCORE_LARGEST_FARM_CITIES", {'{p1}', playerName}, {'{n1}', globalStats["LargestFarm"].numCities}}, NEUTRAL_COLOR)
+
+    --Largest farm (by points)
+    if globalStats["LargestPointFarm"].players ~= nil then
+        playerName = ""
+        for _, player in ipairs(globalStats["LargestPointFarm"].players) do
+            if playerName ~= "" then
+                playerName = playerName .. ", "
+            end
+            playerName = playerName .. getPlayerOwnerName(player)
+        end
+    else
+        playerName = translate("Unknown player")
+    end
+    allGameMessage({"MESSAGE_SCORE_LARGEST_FARM_POINTS", {'{p1}', playerName}, {'{n1}', globalStats["LargestPointFarm"].points}}, NEUTRAL_COLOR)
+
+end
+
+--Restore any saved data from stats
+function statsLoadData(saved_data)
+    additionalPlayerStats = saved_data.additionalPlayerStats
+    if saved_data.globalStats ~= nil then
+        globalStats = saved_data.globalStats
+    else
+        --done for backwards compatibility
+        statsInitializeGlobalStats()
+        globalStats["LongestRoad"].numTiles = saved_data.longestRoad
+        globalStats["LargestCity"].numTiles = saved_data.largestCity
+    end
+end
+
+--Save data from stats
+function statsSaveData(saved_data)
+    saved_data.additionalPlayerStats = additionalPlayerStats
+    saved_data.globalStats = globalStats
+end

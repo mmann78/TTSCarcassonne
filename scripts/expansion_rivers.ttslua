@@ -23,6 +23,38 @@ local riverStartingForkTileLocation = {position = {x=0, y=2, z=TILE_SPACING}, ro
 local riverSpringTile_Location
 local riverForkTile_Location
 
+--Player scoring data specific to expansion
+function riverInitializeAdditionalPlayerStats(player)
+    if controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiverBB5'] or controlPanelSettings['StartingTileRiver'] then
+        player['Followers placed on river'] = 0
+    end
+end
+
+--Check if a follower is being placed on a river tile to record it for statistics
+function riverFigurePlacement(newFigure, tile)
+    --Ensure river tiles are part of the game to speed up the logic
+    if not (controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiverBB5'] or controlPanelSettings['StartingTileRiver']) then
+        return
+    end
+
+    --Check the tile for river feature
+    local tileData = getTileDataForTile(getObjectFromGUID(tile.tile_guid))
+    local hasRiver = false
+    for i=1, 4 do
+        if tileData.sides[i] == 'River' then
+            hasRiver = true
+            break
+        end
+    end
+
+    if hasRiver and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
+        local playerStats = additionalPlayerStats[activePlayers[currentPlayer]]
+        if playerStats['Followers placed on river'] ~= nil then
+            playerStats['Followers placed on river'] = playerStats['Followers placed on river'] + 1
+        end
+    end
+end
+
 --Automatically place starting river tiles (Spring and Fork)
 function riverPlaceStartingTiles()
     if springTile_GUID ~= nil then
