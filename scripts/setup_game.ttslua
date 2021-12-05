@@ -486,7 +486,7 @@ function startGame()
         buriedTileCount = 0
     end
     if controlPanelSettings['StartingTileBase'] then
-        addTile(MIDDLE_X_OFFSET, MIDDLE_Z_OFFSET, getObjectFromGUID(BASE_STARTING_TILE_GUID), 2, false)
+        addTile(MIDDLE_X_OFFSET, MIDDLE_Z_OFFSET, getObjectFromGUID(BASE_STARTING_TILE_GUID), 2, false, true)
     end
     --shuffle and lock starting tiles
     for rule_id, rule in pairs(startingTileSettings) do
@@ -505,7 +505,7 @@ function startGame()
                                 if sub_item_settings.lock then sub_tile.setLock(true) end
                                 if sub_item_settings.addToGrid then
                                     local location = computeStartingTileLocation(sub_item_settings.position, sub_item_settings.rotation)
-                                    addTile(location.xIndex, location.zIndex, getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid), location.tileRotation, false)
+                                    addTile(location.xIndex, location.zIndex, getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid), location.tileRotation, false, true)
                                 end
                             end
                         end
@@ -523,7 +523,7 @@ function startGame()
             local springTile = getObjectFromGUID(springTile_GUID)
             springTile.setLock(true)
 
-            addTile(location.xIndex, location.zIndex, springTile, location.tileRotation, false)
+            addTile(location.xIndex, location.zIndex, springTile, location.tileRotation, false, true)
         end
         if forkTile_GUID ~= nil then
             local location = computeStartingTileLocation(riverForkTile_Location.position, riverSpringTile_Location.rotation)
@@ -531,12 +531,10 @@ function startGame()
             local forkTile = getObjectFromGUID(forkTile_GUID)
             forkTile.setLock(true)
 
-            addTile(location.xIndex, location.zIndex, forkTile, location.tileRotation, false)
+            addTile(location.xIndex, location.zIndex, forkTile, location.tileRotation, false, true)
         end
     end
 
-    --HACK: in cases where the game is setup automatically, the starting tile should not be highlighted
-    lastPlacedPlayerTiles[activePlayers[currentPlayer]] = nil
     tileStack.shuffle()
     if controlPanelSettings['StartingTileRiverII'] then
         allGameMessage({"MESSAGE_SETUP_RIVER_II_NOTIFICATION"}, NEUTRAL_COLOR)

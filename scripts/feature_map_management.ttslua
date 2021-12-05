@@ -2,7 +2,7 @@
 --This new system is intended to replace the old method of using recusion to traverse the tiles, which should save time when the AI is making decisions
 --recursion is still needed when removing tiles, but this should be a rare event
 
-function addTile(xIndex, zIndex, tile, rotation, temp)
+function addTile(xIndex, zIndex, tile, rotation, temp, auto)
     --note: if this function is called with temp=true, you must separately clear tileGrid[xIndex][zIndex] to nil once you are finished
     local tileData = getTileDataForTile(tile)
     if tileGrid[xIndex] == nil then tileGrid[xIndex] = {} end
@@ -80,14 +80,18 @@ function addTile(xIndex, zIndex, tile, rotation, temp)
 
         lastPlacedTileX = xIndex
         lastPlacedTileZ = zIndex
-        if lastPlacedPlayerTiles[activePlayers[currentPlayer]] ~= nil then
-            local coordinates = lastPlacedPlayerTiles[activePlayers[currentPlayer]]
-            if tileGridOccupied(coordinates.x, coordinates.z) then
-                local tile = getObjectFromGUID(tileGrid[coordinates.x][coordinates.z].tile_guid)
-                tile.highlightOff()
+        --highlight the last tile played by a player, not when a tile is
+        --placed automatically during setup
+        if not auto then
+            if lastPlacedPlayerTiles[activePlayers[currentPlayer]] ~= nil then
+                local coordinates = lastPlacedPlayerTiles[activePlayers[currentPlayer]]
+                if tileGridOccupied(coordinates.x, coordinates.z) then
+                    local tile = getObjectFromGUID(tileGrid[coordinates.x][coordinates.z].tile_guid)
+                    tile.highlightOff()
+                end
             end
+            lastPlacedPlayerTiles[activePlayers[currentPlayer]] = {x=xIndex, z=zIndex}
         end
-        lastPlacedPlayerTiles[activePlayers[currentPlayer]] = {x=xIndex, z=zIndex}
     end
     local targetLinkedFeatures
     local targetFeatureList

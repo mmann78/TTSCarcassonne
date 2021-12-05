@@ -296,7 +296,7 @@ function checkTile(params)
             if AUTOLOCK then
                 newTile.setLock(true)
             end
-            addTile(xIndex, zIndex, newTile, tileRotation, false)
+            addTile(xIndex, zIndex, newTile, tileRotation, false, false)
             return nextState('tile placed')
         end
     else

@@ -1061,7 +1061,7 @@ function AICalculateLocationScoreEasy(newTile, tileRotation, xIndex, zIndex)
     --debugMessage(1, "AICalculateLocationScore at x:" .. xIndex .. " z:" .. zIndex .. " rot:" .. tileRotation)
     --temporarily insert this tile into the grid
     local newTileData = getTileDataForTile(newTile)
-    addTile(xIndex, zIndex, newTile, tileRotation, true)
+    addTile(xIndex, zIndex, newTile, tileRotation, true, false)
     joinedActiveFigures = {}
     for featureNum, figureList in pairs(activeFigures) do
         if tempJoinedFeature[featureNum] ~= nil then
@@ -1809,7 +1809,7 @@ function AICalculateTileLocationScore(newTile, tileRotation, xIndex, zIndex)
     local newTileData = getTileDataForTile(newTile)
 
     --temporarily insert this tile into the grid
-    addTile(xIndex, zIndex, newTile, tileRotation, true)
+    addTile(xIndex, zIndex, newTile, tileRotation, true, false)
 
     --recreate joinedActiveFigures. If a featureNum has changed as a result of adding the tile, the figure's featureNum should be updated too
     joinedActiveFigures = {}
@@ -2861,7 +2861,7 @@ function AIMoveTileToLocation(newTile, xIndex, zIndex, tileRotation)
 end
 
 function AILockTile(params)
-    addTile(params.xIndex, params.zIndex, params.newTile, params.tileRotation, false)
+    addTile(params.xIndex, params.zIndex, params.newTile, params.tileRotation, false, false)
     aiCurrentTile_GUID = nil
 
     params.newTile.interactable = true

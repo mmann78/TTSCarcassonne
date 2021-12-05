@@ -1364,7 +1364,7 @@ function placeFerryOn(link)
 
         local backup = {tile = lastPlacedTile, x = lastPlacedTileX, z = lastPlacedTileZ}
         removeTile(ferryTilePosition.x, ferryTilePosition.z, ferryTileObj)
-        addTile(ferryTilePosition.x, ferryTilePosition.z, ferryTileObj, ferryTile.rotation, false)
+        addTile(ferryTilePosition.x, ferryTilePosition.z, ferryTileObj, ferryTile.rotation, false, false)
         lastPlacedTile = backup.tile
         lastPlacedTileX = backup.x
         lastPlacedTileZ = backup.z
