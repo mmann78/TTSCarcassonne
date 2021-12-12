@@ -1,0 +1,76 @@
+-- Helper functions for game setup that are generic and are expansion set agnostic
+
+--Helper function to compute the X/Z index and rotation from a starting tile's coordinates
+function computeStartingTileLocation(position, rotation)
+    local tileRotation = math.floor(rotation.y / 90 + 0.5)
+    if tileRotation == 0 then tileRotation = 4 end
+
+    return {
+            xIndex = math.floor((position.x + MIDDLE_OFFSET.x + TILE_SPACING / 2) / TILE_SPACING),
+            zIndex = math.floor((position.z + MIDDLE_OFFSET.z + TILE_SPACING / 2) / TILE_SPACING),
+            tileRotation = tileRotation
+           }
+end
+
+
+--Helper function to place a starting item
+function placeStartingItem(starting_tile_id, expansion_id, item_id, location_override, sub_item_position_z_offset)
+
+    local item_settings = startingTileSettings[starting_tile_id][expansion_id][item_id]
+
+    prepareStartingTileLock = true
+    local position = item_settings.position
+    if location_override ~= nil then
+        position = location_override.position
+    end
+    local rotation = item_settings.rotation
+    if location_override ~= nil then
+        rotation = location_override.rotation
+    end
+
+    if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[expansion_id].guid), {guid = EXPANSION_BAGS[expansion_id].contents[item_id].guid, position = position, rotation = rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+        prepareStartingTileLock = false
+    end
+    while prepareStartingTileLock do
+        coroutine.yield(0)
+    end
+    wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+
+    if item_settings.contents ~= nil then
+        for sub_item_id, sub_item_settings in pairs(item_settings.contents) do
+            local position = sub_item_settings.position
+            position.z = position.z + sub_item_position_z_offset
+            if getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid) ~= nil then
+                local params = {guid = EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid,
+                                position = position,
+                                rotation = sub_item_settings.rotation}
+                if sub_item_id == #item_settings.contents - 1 then
+                    prepareStartingTileLock = true
+                    params.callback_owner = Global
+                    params.callback = "prepareStartingTileUnlock"
+                end
+                -- if item_id == 'WoFStartingTiles' then
+                --     params.params = {position = position, rotation = sub_item_settings.rotation}
+                --     params.callback = "prepareWoFStartingTile"
+                -- end
+                getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].guid).takeObject(params)
+            else
+                local newObj = getObjectFromGUID(EXPANSION_BAGS[expansion_id].contents[item_id].contents[sub_item_id].guid)
+                newObj.setPositionSmooth(position)
+                newObj.setRotationSmooth(sub_item_settings.rotation)
+                prepareStartingTileLock = false
+                wait(1.5)
+            end
+            if sub_item_id == #item_settings.contents - 1 then
+                while prepareStartingTileLock do
+                   coroutine.yield(0)
+                end
+            end
+        end
+    end
+end
+
+--unlocks the preparePlayerStartingItems coroutine
+function prepareStartingTileUnlock()
+    prepareStartingTileLock = false
+end

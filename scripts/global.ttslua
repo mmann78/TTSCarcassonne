@@ -339,10 +339,6 @@ tileStack_GUID = BASE_TILE_STACK_GUID
 tileInPlay = true
 
 --keep track of these tiles to control the order that the AI places them
-forkTile_GUID = nil
-springTile_GUID = nil
-lakeTile_GUID = nil
-riverBodyTiles_GUID = nil
 finalTile_GUID = nil
 
 --The following neutral figures need to be tracked runtime
@@ -517,6 +513,10 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\tile_data\tile_data
 
 #include !\TTSCarcassonne\scripts\localization
+
+#include !\TTSCarcassonne\scripts\setup_helpers
+
+#include !\TTSCarcassonne\scripts\expansion_rivers
 
 #include !\TTSCarcassonne\scripts\state_machine
 

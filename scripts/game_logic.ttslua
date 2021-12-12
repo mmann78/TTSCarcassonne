@@ -89,14 +89,24 @@ function endTurn()
         --if tileStack == nil and finalTile_GUID == nil then
         --    allGameMessage("The game is over. Calculate the final score by pressing the End Game button. (If this was unexpected, it could be because the tile stack was taken apart or manually stacked wrong)", NEUTRAL_COLOR)
         --else
-            if lastPlacedTileX == nil or not (controlPanelSettings['PnDDragon'] and tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid == EXPANSION_BAGS['RiverII'].contents['RiverLakeTile'].guid) then
-                currentPlayer = currentPlayer + 1
-                if currentPlayer > #activePlayers then
-                    currentPlayer = 1
+            if lastPlacedTileX ~= nil and tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid == finalRiverTile_GUID then
+                --The main tile stack can be freed up
+                riverHandleFinalTile()
+                if controlPanelSettings['PnDDragon'] and tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid == EXPANSION_BAGS['RiverII'].contents['RiverLakeTile'].guid then
+                    --Dragon has to be played by player and placement of lake can't be automated
+                elseif not controlPanelSettings['RiverMixAll'] then
+                    --If the river tiles aren't already mixed up, automatically place the lake tile so it
+                    --doesn't have to "waste" a player's turn (and require skipping back to that player)
+                    riverAddLakeTile(lastPlacedTileX, lastPlacedTileZ, tileGrid[lastPlacedTileX][lastPlacedTileZ])
                 end
-            else
-                allGameMessage({"MESSAGE_LAKE_TILE_BONUS_TURN", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
             end
+
+            --Next player's turn
+            currentPlayer = currentPlayer + 1
+            if currentPlayer > #activePlayers then
+                currentPlayer = 1
+            end
+
             turnState = 'begin turn' --in case skip turn was pressed, go to the beginning from every state
             return stateHandler()
         --end
@@ -3213,30 +3223,6 @@ function fairyEligibleFollowers()
         end
     end
     return eligibleFollowers
-end
-
-function hasOpenRiver()
-    local hasOpenRiver = false
-    for featureKey, feature in pairs(featureList) do
-        if feature.nameOfFeature == 'River' then
-            if feature.numOpenings ~= 0 then
-                hasOpenRiver = true
-            end
-        end
-    end
-    return hasOpenRiver
-end
-
-function hasFinishedRiver()
-    local riverFinished = false
-    for featureKey, feature in pairs(featureList) do
-        if feature.nameOfFeature == 'River' then
-            if feature.numOpenings == 0 then
-                riverFinished = true
-            end
-        end
-    end
-    return riverFinished
 end
 
 function rewardGold()

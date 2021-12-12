@@ -1,0 +1,296 @@
+--Encapsulate the behavior of the rivers expansions (RiverI, RiverII, RiverBB5, GamesQuarterly)
+
+--keep track of these tiles during setup and playing of the river tiles
+local forkTile_GUID = nil
+local springTile_GUID = nil
+local lakeTile_GUID = nil
+local riverBodyTiles_GUID = nil
+--Used to check if the other side of the RiverII river can been closed
+local riverII_lakeCastle_GUID = "595e38"
+
+--the following location is used for the MixAllTiles house rule
+local riverDefaultLocation = {position = {x=0.0, y=2.32, z=17.49}, rotation = {x=0,y=180,z=180}}
+--the following location is used for the river spring tile when a river set is included, but is not the starting set
+local riverSpringTileLocation = {position = {x=-1.59, y=2.32, z=14.31}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the river spring tile when a river set is the starting set
+local riverStartingSpringTileLocation = {position = {x=0.0, y=2.0, z=TILE_SPACING*2}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the RiverII fork tile when a river set is included, but is not the starting set
+local riverForkLocation = {position = {x=-3.18, y=2.32, z=14.31}, rotation = {x=0,y=180,z=0}}
+--the following location is used for the RiverII fork tile when a river set is the starting set
+local riverStartingForkTileLocation = {position = {x=0, y=2, z=TILE_SPACING}, rotation = {x=0,y=180,z=0}}
+
+--Cache where the river spring and fork tiles end up because there are a few configuration options that could affect their location
+local riverSpringTile_Location
+local riverForkTile_Location
+
+--Automatically place starting river tiles (Spring and Fork)
+function riverPlaceStartingTiles()
+    if springTile_GUID ~= nil then
+        local location = computeStartingTileLocation(riverSpringTile_Location.position, riverSpringTile_Location.rotation)
+
+        local springTile = getObjectFromGUID(springTile_GUID)
+        springTile.setLock(true)
+
+        addTile(location.xIndex, location.zIndex, springTile, location.tileRotation, false, true)
+        springTile_GUID = nil
+    end
+    if forkTile_GUID ~= nil then
+        local location = computeStartingTileLocation(riverForkTile_Location.position, riverSpringTile_Location.rotation)
+
+        local forkTile = getObjectFromGUID(forkTile_GUID)
+        forkTile.setLock(true)
+
+        addTile(location.xIndex, location.zIndex, forkTile, location.tileRotation, false, true)
+        forkTile_GUID = nil
+    end
+end
+
+--Display the appropriate startup instruction for the various river expansion sets
+function riverDisplayStartingInstructions(tileStack)
+    if controlPanelSettings['StartingTileRiverII'] then
+        allGameMessage({"MESSAGE_SETUP_RIVER_II_NOTIFICATION"}, NEUTRAL_COLOR)
+
+        --Require the river tiles to be completed until the tile stack can be used
+        tileStack.setLock(true)
+        tileStack.interactable = false
+    elseif controlPanelSettings['StartingTileRiver'] or controlPanelSettings['StartingTileRiverBB5'] then
+        allGameMessage({"MESSAGE_SETUP_RIVER_NOTIFICATION"}, NEUTRAL_COLOR)
+        --Require the river tiles to be completed until the tile stack can be used
+        tileStack.setLock(true)
+        tileStack.interactable = false
+    end
+end
+
+function riverPrepareStartingTiles(placeRiverAsStartingTile)
+    local springTile_expansion_id
+    local forkTile_expansion_id
+
+    --Determine if RiverMixAll option will place all river tiles together in a single pile
+    local overrideRiverLocation
+    if controlPanelSettings['RiverMixAll'] then
+        overrideRiverLocation = riverDefaultLocation
+    end
+
+    --Priorize where the river tiles come from prioritizing GamesQuarterly over RiverII over BB5 River over the original River (CAR ref 237)
+    if controlPanelSettings['GamesQuarterlyTiles'] then
+        springTile_GUID = EXPANSION_BAGS['GamesQuarterly'].contents['RiverSpringTile'].guid
+        springTile_expansion_id = 'GamesQuarterly'
+
+        --HACK: only use GamesQuarterly river tiles if one of the rivers is enabled
+        if controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiverBB5'] or controlPanelSettings['StartingTileRiver'] then
+            placeStartingItem('GamesQuarterlyTiles', 'GamesQuarterly', 'RiverBodyTiles', overrideRiverLocation, 0)
+        end
+    end
+
+    --Use RiverII
+    if controlPanelSettings['StartingTileRiverII'] then
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'RiverII'
+        end
+        forkTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverForkTile'].guid
+        forkTile_expansion_id = 'RiverII'
+        lakeTile_GUID = EXPANSION_BAGS['RiverII'].contents['RiverLakeTile'].guid
+        riverBodyTiles_GUID = EXPANSION_BAGS['RiverII'].contents['RiverBodyTiles'].guid
+
+        placeStartingItem('StartingTileRiverII', 'RiverII', 'RiverBodyTiles', overrideRiverLocation, 0)
+        placeStartingItem('StartingTileRiverII', 'RiverII', 'RiverLakeTile', overrideRiverLocation, 0)
+    end
+
+    --Use Big Box River
+    if controlPanelSettings['StartingTileRiverBB5'] then
+        placeStartingItem('StartingTileRiverBB5', 'RiverBB5', 'RiverBodyTiles', overrideRiverLocation, 0)
+        if riverBodyTiles_GUID == nil then
+            riverBodyTiles_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverBodyTiles'].guid
+        end
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'RiverBB5'
+        end
+        if lakeTile_GUID == nil then
+            lakeTile_GUID = EXPANSION_BAGS['RiverBB5'].contents['RiverLakeTile'].guid
+            placeStartingItem('StartingTileRiverBB5', 'RiverBB5', 'RiverLakeTile', overrideRiverLocation, 0)
+        end
+    end
+
+    --Use RiverI
+    if controlPanelSettings['StartingTileRiver'] then
+        placeStartingItem('StartingTileRiver', 'River', 'RiverBodyTiles', overrideRiverLocation, 0)
+        if riverBodyTiles_GUID == nil then
+            riverBodyTiles_GUID = EXPANSION_BAGS['River'].contents['RiverBodyTiles'].guid
+        end
+        if springTile_GUID == nil then
+            springTile_GUID = EXPANSION_BAGS['River'].contents['RiverSpringTile'].guid
+            springTile_expansion_id = 'River'
+        end
+        if lakeTile_GUID == nil then
+            lakeTile_GUID = EXPANSION_BAGS['River'].contents['RiverLakeTile'].guid
+            placeStartingItem('StartingTileRiver', 'River', 'RiverLakeTile', overrideRiverLocation, 0)
+        end
+    end
+
+    --Place the spring tile
+    if springTile_GUID ~= nil then
+        --Initialize the position and rotation as if this is a starting tile
+        riverSpringTile_Location = riverStartingSpringTileLocation
+        if controlPanelSettings['RiverMixAll'] then
+            riverSpringTile_Location = riverDefaultLocation
+        elseif not placeRiverAsStartingTile then
+            riverSpringTile_Location = riverSpringTileLocation
+        end
+
+        if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[springTile_expansion_id].guid), {guid = springTile_GUID, position = riverSpringTile_Location.position, rotation = riverSpringTile_Location.rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+            prepareStartingTileLock = false
+        end
+        while prepareStartingTileLock do
+            coroutine.yield(0)
+        end
+        wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+    end
+
+    --Place the river fork tile
+    if forkTile_GUID ~= nil then
+        --Initialize the position and rotation as if this is a starting tile
+        riverForkTile_Location = riverStartingForkTileLocation
+        if controlPanelSettings['RiverMixAll'] then
+            riverForkTile_Location = riverDefaultLocation
+        elseif not placeRiverAsStartingTile then
+            riverForkTile_Location = riverForkLocation
+        end
+        if takeObjectSafe(getObjectFromGUID(EXPANSION_BAGS[forkTile_expansion_id].guid), {guid = forkTile_GUID, position = riverForkTile_Location.position, rotation = riverForkTile_Location.rotation, smooth = false, callback_owner = Global, callback = "prepareStartingTileUnlock"}) == nil then
+            prepareStartingTileLock = false
+        end
+        while prepareStartingTileLock do
+            coroutine.yield(0)
+        end
+        wait(0.1) --need to wait before taking objects from this stack. Wait time is arbitrary, but seems to work.
+    end
+end
+
+--Final river stack tile has been played.  Free up the regular tile stack
+--and place the river lake tile
+function riverHandleFinalTile()
+    finalRiverTile_GUID = nil
+
+    local tileStack = getObjectFromGUID(tileStack_GUID)
+    tileStack.setLock(false)
+    tileStack.interactable = true
+end
+
+--Automatically move and set the lake tile
+function riverAddLakeTile(lastPlacedTileX, lastPlacedTileZ, lastTile)
+
+    --ensure there is a lake tile
+    if lakeTile_GUID == nil then return end
+
+    local lakeTile = getObjectFromGUID(lakeTile_GUID)
+
+    --If the last tile placed is other end of the river, the surrounding
+    --coodinates won't work, so find the other side of the river and use
+    --that information
+    if lastTile.tile_guid == riverII_lakeCastle_GUID then
+        getFeatureComponents(lastPlacedTileX, lastPlacedTileZ, 1, 1, false, false)
+
+        --Traverse until finding the coordinates of the last piece played on the other side
+        for xIndex, gridColumn in pairs(traversedFeaturePositions) do
+            lastPlacedTileX = xIndex
+            for zIndex, tileLocation in pairs(gridColumn) do
+				lastPlacedTileZ = zIndex
+    		end
+        end
+
+        lastTile = tileGrid[lastPlacedTileX][lastPlacedTileZ]
+    end
+
+    local lastTileObject = getObjectFromGUID(lastTile.tile_guid)
+    local lastTileData = getTileDataForTile(lastTileObject)
+    local tileRotation = lastTile.rotation
+
+    -- Find the unoccupied grid location and rotate the lake tile until it connects on the river side
+    for i=1, 4 do
+        if lastTileData.sides[(3 + i - tileRotation) % 4 + 1] == 'River' then
+            local diff = 0
+            local x = lastPlacedTileX
+            local z = lastPlacedTileZ
+            if i > 2 then
+                 diff = 1
+            else diff = -1
+            end
+            if i % 2 == 0 then
+                x = x + diff
+            else
+                 z = z + diff
+            end
+
+            if not tileGridOccupied(x, z) then
+                for lakeTileRotation=0, 3 do
+                    if tileConnectsToSide(lastTileObject, tileRotation, i, lakeTile, lakeTileRotation) then
+                        lakeTile.setPositionSmooth({x * TILE_SPACING - MIDDLE_OFFSET.x, TABLE_SURFACE_Y, z * TILE_SPACING - MIDDLE_OFFSET.z})
+                        lakeTile.setRotation({0, lakeTileRotation * 90, 0})
+                        lakeTile.setLock(true)
+                        addTile(x, z, lakeTile, lakeTileRotation, false, true)
+                        lakeTile_GUID = nil
+                    end
+                end
+            end
+        end
+    end
+
+    --Check if not able to automatically place the lake
+    if lakeTile_GUID ~= nil then
+        allGameMessage({"MESSAGE_MANUALLY_PLACE_RIVER_LAKE"}, NEUTRAL_COLOR, nil)
+    end
+end
+
+function riverIsOpen()
+    local riverOpen = false
+    for featureKey, feature in pairs(featureList) do
+        if feature.nameOfFeature == 'River' then
+            if feature.numOpenings ~= 0 then
+                riverOpen = true
+            end
+        end
+    end
+    return riverOpen
+end
+
+function riverIsFinishedRiver()
+    local riverFinished = false
+    for featureKey, feature in pairs(featureList) do
+        if feature.nameOfFeature == 'River' then
+            if feature.numOpenings == 0 then
+                riverFinished = true
+            end
+        end
+    end
+    return riverFinished
+end
+
+--Is a river tile of interest being destroyed?  This is for handling the end of the river tile stack
+function riverIsObjectDestroyed(dying_object)
+    return dying_object.getGUID() == riverBodyTiles_GUID
+end
+
+--Take the last river tile and save its GUID as the final river tile before the river tile stack is destroyed
+function riverHandleObjectDestroyed(obj)
+    finalRiverTile_GUID = obj.getGUID()
+    riverBodyTiles_GUID = nil
+end
+
+--Restore any saved data from river expansions
+function riverLoadData(saved_data)
+    forkTile_GUID = saved_data.forkTile_GUID
+    springTile_GUID = saved_data.springTile_GUID
+    lakeTile_GUID = saved_data.lakeTile_GUID
+    riverBodyTiles_GUID = saved_data.riverBodyTiles_GUID
+    finalRiverTile_GUID = saved_data.finalRiverTile_GUID
+end
+
+--Save data from river expansions
+function riverSaveData(saved_data)
+    saved_data.forkTile_GUID = forkTile_GUID
+    saved_data.springTile_GUID = springTile_GUID
+    saved_data.lakeTile_GUID = lakeTile_GUID
+    saved_data.riverBodyTiles_GUID = riverBodyTiles_GUID
+    saved_data.finalRiverTile_GUID = finalRiverTile_GUID
+end

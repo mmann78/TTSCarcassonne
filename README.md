@@ -63,6 +63,14 @@ Note that buttons created by this code can provide for additional entry points (
 
 Contains code related to setting up the game. Basically, everything that happens when you click the "Start Game" button.
 
+### setup_helper.ttslua
+
+Helper functions for game setup that are generic and are expansion set agnostic.
+
+### expansion_rivers.ttslua
+
+Encapsulates the behavior of the rivers expansions (RiverI, RiverII, RiverBB5, GamesQuarterly)
+
 ### game_logic.ttslua
 
 Contains most of the logic that drives the game's rules.

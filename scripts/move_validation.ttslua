@@ -428,7 +428,7 @@ function isValidTileLocation(tile, tileRotation, xIndex, zIndex, verbose)
                 end
             end
         end
-        if not controlPanelSettings["RiverAllowUnconnected"] and hasRiver and hasOpenRiver() and not riverHasConnection then
+        if not controlPanelSettings["RiverAllowUnconnected"] and hasRiver and riverIsOpen() and not riverHasConnection then
             if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_RIVER_UNCONNECTED"}, activePlayers[currentPlayer]) end
             return false
         end

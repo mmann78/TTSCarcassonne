@@ -58,7 +58,7 @@ function AIStateHandler()
         return
     end
     if turnState == 'awaiting tile placement' then
-        if (controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiver'] or controlPanelSettings['StartingTileRiverBB5']) and hasFinishedRiver() then
+        if (controlPanelSettings['StartingTileRiverII'] or controlPanelSettings['StartingTileRiver'] or controlPanelSettings['StartingTileRiverBB5']) and riverIsFinishedRiver() then
             -- local itemRemoved = false
             -- for _, obj_GUID in pairs({forkTile_GUID, riverBodyTiles_GUID, finalRiverTile_GUID, springTile_GUID, lakeTile_GUID}) do
             --     if obj_GUID ~= nil then

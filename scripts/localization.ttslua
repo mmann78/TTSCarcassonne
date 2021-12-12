@@ -257,7 +257,6 @@ LOCALIZED_STRINGS = {
 
       --Global
 
-    ["MESSAGE_LAKE_TILE_BONUS_TURN"] = "{p1} gets another turn for laying down the volcano lake tile.",
     ["MESSAGE_WHEEL_FORTUNE"] = "The pig landed on the Fortune event. The current player will be awarded 3 points.",
     ["MESSAGE_WHEEL_FORTUNE_SCORED"] = "{p1} scores 3 points for landing on the Fortune event.",
     ["MESSAGE_WHEEL_EVENT_DISABLED"] = "The {s1} event is currently disabled. Nothing happens.",
@@ -380,6 +379,7 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_INVALID_LOCATION_MAGIC_PORTAL_USAGE_EXCEEDED"] = "Invalid Location: Only one follower may use the magic portal per turn.",
     ["MESSAGE_INVALID_LOCATION_FIGURE_ON_DRAGON"] = "Invalid Location: Cannot place a figure on the tile containing the dragon.",
     ["MESSAGE_INVALID_LOCATION_FIGURE_ON_RIVER"] = "Invalid Location: You can't occupy a river.",
+    ["MESSAGE_MANUALLY_PLACE_RIVER_LAKE"] = "The lake tile can not be automatically placed.  It must be placed manually.",
     ["MESSAGE_INVALID_LOCATION_COC_NOT_ALLOWED"] = "Invalid Location: You cannot place a figure in the City of Carcassonne at this stage in the game.",
     ["MESSAGE_INVALID_LOCATION_FLIER_USAGE_EXCEEDED"] = "Invalid Location: Only one follower may use the flier per turn.",
     ["MESSAGE_INVALID_LOCATION_FLIER_ILLEGAL_FIGURE"] = "Invalid Location: Only a follower can be placed on a flier. Valid followers: Follower, Big Follower, Wagon, Mayor, Phantom.",
@@ -434,8 +434,8 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SETUP_NO_CONTROL_PANEL_PERMISSIONS"] = "Only promoted players can use the control panel.",
     ["MESSAGE_SETUP_COLOR_SUBSTITUTION"] = "{c1} has substituted their color/faction for {c2}",
     ["MESSAGE_SETUP_MODEL_SUBSTITUTION"] = "{c1} has substituted their {f1} model for a custom one",
-    ["MESSAGE_SETUP_RIVER_II_NOTIFICATION"] = "You are currently playing with the river. Please place a river tile, then you may add more to it. According to the rules, the fork should be the first tile placed, followed by the facedown tiles until they are gone, then the spring, and lastly the lake piece.",
-    ["MESSAGE_SETUP_RIVER_NOTIFICATION"] = "You are currently playing with the river. Please place a river tile, then you may add more to it. According to the rules, the spring should be the first tile placed, followed by the facedown tiles until they are gone, and then the lake.",
+    ["MESSAGE_SETUP_RIVER_II_NOTIFICATION"] = "You are currently playing with the river. The starting spring and fork tiles have been placed. Continue to place other river tiles in its stack until its complete. Then the lake tile will be automatically placed and then the original tile stack can be played.",
+    ["MESSAGE_SETUP_RIVER_NOTIFICATION"] = "You are currently playing with the river. The starting spring tile has been placed. Continue to place other river tiles in its stack until its complete. Then the lake tile will be automatically placed and then the original tile stack can be played.",
     ["MESSAGE_SETUP_START"] = "Game started. Good luck!",
     ["MESSAGE_SETUP_FIRST_PLAYER"] = "{p1} was randomly chosen as the first player.",
 
@@ -846,7 +846,6 @@ LOCALIZED_STRINGS = {
 
       --Global
 
-    ["MESSAGE_LAKE_TILE_BONUS_TURN"] = "{p1} krijgt een extra beurt vanwege het leggen van de tegel met het meer en de vulkaan.",
     ["MESSAGE_WHEEL_FORTUNE"] = "Het varken landde op Fortuin. De huidige speler krijgt 3 punten.",
     ["MESSAGE_WHEEL_FORTUNE_SCORED"] = "{p1} krijgt 3 punten vanwege terecht komen op Fortuin.",
     ["MESSAGE_WHEEL_EVENT_DISABLED"] = "{s1} is momenteel uitgeschakeld. Er gebeurt niets.",
@@ -1024,7 +1023,9 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SETUP_NO_CONTROL_PANEL_PERMISSIONS"] = "Alleen gepromoveerde spelers kunnen het regelpaneel gebruiken.",
     ["MESSAGE_SETUP_COLOR_SUBSTITUTION"] = "{c1} is van kleur/team gewisseld naar {c2}",
     ["MESSAGE_SETUP_MODEL_SUBSTITUTION"] = "{c1} heeft de figuur {f1} vervangen door een eigen model",
+    --TODO: Update to MESSAGE_SETUP_RIVER_II_NOTIFICATION
     ["MESSAGE_SETUP_RIVER_II_NOTIFICATION"] = "Er wordt gespeeld met de rivier. Leg een riviertegel en breid die uit. Volgens de regels moet de splitsing de eerste tegel zijn, gevolgd door de gedekte riviertegels totdat die op zijn, dan de bron en tot slot de tegel met het meer.",
+    --TODO: Update to MESSAGE_SETUP_RIVER_NOTIFICATION
     ["MESSAGE_SETUP_RIVER_NOTIFICATION"] = "Er wordt gespeeld met de rivier. Leg een riviertegel en breid die uit. Volgens de regels moet de bron de eerste tegel zijn, gevolgd door de gedekte riviertegels totdat die op zijn en tot slot de tegel met het meer.",
     ["MESSAGE_SETUP_START"] = "Het spel is gestart. Succes!",
     ["MESSAGE_SETUP_FIRST_PLAYER"] = "{p1} is willekeurig gekozen als eerste speler.",
@@ -1440,7 +1441,6 @@ LOCALIZED_STRINGS = {
 
         --Global
 
-    ["MESSAGE_LAKE_TILE_BONUS_TURN"] = "因為放了火山河牌{p1}可以再行駛一次動作",
     ["MESSAGE_WHEEL_FORTUNE"] = "若大豬移動到命運事件，當下的玩家獲得3分。",
     ["MESSAGE_WHEEL_FORTUNE_SCORED"] = "{p1}移動到命運事件上獲得3分。",
     ["MESSAGE_WHEEL_EVENT_DISABLED"] = "{s1}事件目前已被停用。沒有任何事情發生。",
@@ -1620,7 +1620,9 @@ LOCALIZED_STRINGS = {
     ["MESSAGE_SETUP_NO_CONTROL_PANEL_PERMISSIONS"] = "只有擁有權限的玩家可以使用控制版面",
     ["MESSAGE_SETUP_COLOR_SUBSTITUTION"] = "{c1}換成{c2}",
     ["MESSAGE_SETUP_MODEL_SUBSTITUTION"] = "{c1}的{f1}換成客製化的",
+    --TODO: Update to MESSAGE_SETUP_RIVER_II_NOTIFICATION
     ["MESSAGE_SETUP_RIVER_II_NOTIFICATION"] = "您現在正在玩河流卡牌。請放置河流卡牌。根據規則，河道分流應該是第一個放置的卡牌，接著是其他面朝下的河流卡牌，直到它們放置完畢，然後是泉湧，最後是湖。",
+    --TODO: Update to MESSAGE_SETUP_RIVER_NOTIFICATION
     ["MESSAGE_SETUP_RIVER_NOTIFICATION"] = "您現在正在玩河流卡牌。請放置河流卡牌。根據規則，泉湧應該是第一個放置的卡牌，接著是其他面朝下的河流卡牌，最後是湖。",
     ["MESSAGE_SETUP_START"] = "遊戲開始 加油!",
     ["MESSAGE_SETUP_FIRST_PLAYER"] = "{p1}被隨機選為第一位玩家。",
