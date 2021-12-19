@@ -26,6 +26,7 @@ function onload(save_state)
         ferriesLinkedQuadrants = saved_data.ferriesLinkedQuadrants
         placedFerries = saved_data.placedFerries
         riverLoadData(saved_data)
+        KnRBLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
         fairy_GUID = saved_data.fairy_GUID
         dragon_GUID = saved_data.dragon_GUID
@@ -222,6 +223,7 @@ function onSave()
         wofPigPosition = wofPigPosition
     }
     riverSaveData(toSave)
+    KnRBSaveData(toSave)
     return jsonencode(toSave)
 end
 

@@ -518,6 +518,8 @@ controlPanelSettings = {
 
 #include !\TTSCarcassonne\scripts\expansion_rivers
 
+#include !\TTSCarcassonne\scripts\expansion_count_king_robber
+
 #include !\TTSCarcassonne\scripts\state_machine
 
 #include !\TTSCarcassonne\scripts\setup_game

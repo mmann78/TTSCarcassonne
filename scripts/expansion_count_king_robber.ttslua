@@ -1,0 +1,490 @@
+--Encapsulate the behavior of the Count, King & Robber expansion (KnRB)
+--This includes behavior for the City of Carcassonne
+
+local KnRBRobber_GUID
+local KnRBKing_GUID
+local CoCCount_GUID
+
+local longestNewRoad
+local largestNewCity
+
+--Scoring data specific to expansion
+function KnRBInitializeScoreSummary(player)
+    if controlPanelSettings['KnRBRobber'] then
+        KnRBRobber_GUID = EXPANSION_BAGS['KnRB'].contents['KnRBRobber'].guid
+        player['King/Robber Tokens'] = 0
+    end
+    if controlPanelSettings['KnRBKing'] then
+        KnRBKing_GUID = EXPANSION_BAGS['KnRB'].contents['KnRBKing'].guid
+        player['King/Robber Tokens'] = 0
+    end
+end
+
+function KnRBCheckFeatureInitialize()
+    longestNewRoad = 0
+    largestNewCity = 0
+end
+
+--Check each individual feature position of the map for longest road/largest city
+function KnRBCheckFeatureMap(feature)
+    if controlPanelSettings['KnRBRobber'] and feature.nameOfFeature == 'Road' and feature.numTiles > longestNewRoad then
+        longestNewRoad = feature.numTiles
+    elseif controlPanelSettings['KnRBKing'] and feature.nameOfFeature == 'City' and feature.numTiles > largestNewCity then
+        largestNewCity = feature.numTiles
+    end
+end
+
+--check if the new tile has completed the biggest city/longest road and award token
+function KnRBCheckFeature()
+    if controlPanelSettings['KnRBRobber'] and longestNewRoad > longestRoad then
+        longestRoad = longestNewRoad
+        local awardToken = getObjectFromGUID(KnRBRobber_GUID)
+        local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBRobber'].x, PLAYER_POSSESSION_POSITIONS['KnRBRobber'].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
+        if awardToken ~= nil then
+            awardToken.setPositionSmooth({player_possession_areas[activePlayers[currentPlayer]].x + x, 2, player_possession_areas[activePlayers[currentPlayer]].z + z})
+            awardToken.setRotationSmooth({0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0})
+            awardToken.setDescription(longestRoad .. " tiles")
+            allGameMessage({"MESSAGE_ROBBER_BARON_AWARD", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{n1}', longestRoad}}, player_color_tints[activePlayers[currentPlayer]])
+        else
+            allErrorMessage({"MESSAGE_ROBBER_BARON_ERROR_MISSING"})
+        end
+    end
+
+    if controlPanelSettings['KnRBKing'] and largestNewCity > largestCity then
+        largestCity = largestNewCity
+        local awardToken = getObjectFromGUID(KnRBKing_GUID)
+        local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['KnRBKing'].x, PLAYER_POSSESSION_POSITIONS['KnRBKing'].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
+        if awardToken ~= nil then
+            awardToken.setPositionSmooth({player_possession_areas[activePlayers[currentPlayer]].x + x, 2, player_possession_areas[activePlayers[currentPlayer]].z + z})
+            awardToken.setRotationSmooth({0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0})
+            awardToken.setDescription(largestCity .. " tiles")
+            allGameMessage({"MESSAGE_KING_AWARD", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{n1}', largestCity}}, player_color_tints[activePlayers[currentPlayer]])
+        else
+            allErrorMessage({"MESSAGE_KING_ERROR_MISSING"})
+        end
+    end
+end
+
+--Is the figure to be returned the King or Robber?
+function KnRBIsFigureReturned(figure_obj)
+    if figure_obj.getGUID() == KnRBKing_GUID or figure_obj.getGUID() == KnRBRobber_GUID then
+        return true
+    end
+
+    return false
+end
+
+-- move the King or Robber away from the player possession area
+function KnRBReturnFigure(figure_obj)
+    local targetPosition = {x = NEUTRAL_ITEMS_LOCATION.x, y = NEUTRAL_ITEMS_LOCATION.y, z = NEUTRAL_ITEMS_LOCATION.z}
+    if figure_obj.getGUID() == KnRBKing_GUID then
+        targetPosition.x = targetPosition.x + 1 --arbitrary location
+    elseif figure_obj.getGUID() == KnRBRobber_GUID then
+        targetPosition.x = targetPosition.x + 3 --arbitrary location
+    end
+
+    figure_obj.setPositionSmooth(targetPosition, false, false)
+end
+
+--count total completed cities and roads for king and robber points
+function KnRBScoreFeature()
+    local numCities = 0
+    local numRoads = 0
+
+    if controlPanelSettings['KnRBKing'] or controlPanelSettings['KnRBRobber'] then
+        for x, tileColumn in pairs(tileGrid) do
+            for z, tileLocation in pairs(tileColumn) do
+                local tile = getObjectFromGUID(tileLocation.tile_guid)
+                for i=1, 12 do --roads and cities
+                    if traversedGrid[x] == nil or traversedGrid[x][z] == nil or traversedGrid[x][z][i] == nil or traversedGrid[x][z][i] > 1 then
+                        if controlPanelSettings['KnRBRobber'] and i < 5 and getTileFeatureName(tile, i) == 'Road' then
+                            if getFeatureComponents(x, z, i, 1, false) == 0 then
+                                numRoads = numRoads + 1
+                            end
+                        elseif controlPanelSettings['KnRBKing'] and i >= 5 and (getTileFeatureName(tile, i) == 'City' or getTileFeatureName(tile, i) == 'Carcassonne') then
+                            if getFeatureComponents(x, z, i, 1, false) == 0 then
+                                numCities = numCities + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        --find king and robber tokens and give points
+        for _, player in ipairs(activePlayers) do
+            local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
+            for _, obj in ipairs(playerPossessions) do
+                local score
+                if obj.getGUID() == KnRBKing_GUID then
+                    score = numCities
+                elseif obj.getGUID() == KnRBRobber_GUID then
+                    score = numRoads
+                end
+                if (obj.getGUID() == KnRBKing_GUID and controlPanelSettings['KnRBKing']) or (obj.getGUID() == KnRBRobber_GUID and controlPanelSettings['KnRBRobber']) then
+                    allGameMessage({"MESSAGE_SCORE_KING_OR_ROBBER_BARON", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', score}, {'{f1}', obj.getName()}}, player_color_tints[player])
+                    scorePoints(player, 'King/Robber Tokens', score)
+                    table.insert(removedFigures, {guid=obj.getGUID(), winner=true})
+                    obj.setLock(false)
+                    obj.use_gravity = false
+                    obj.interactable = false
+                    --raise the token in the air
+                    obj.setPositionSmooth({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
+                    traversedFeaturePositions = {}
+
+                    if showMarkers == 'Both' or showMarkers == 'Scoring' then
+                        praiseFiguresCameraFocus(false)
+                        Timer.create({identifier=os.clock(), function_name='praiseFigures', function_owner=nil, parameters=nil, delay=0.9})
+                    else
+                        returnFigures()
+                    end
+                    return
+                end
+            end
+        end
+    end
+end
+
+function KnRBPromptMovingCount()
+
+    if not controlPanelSettings['StartingTileCoC'] or controlPanelSettings['CoCNoCount'] then
+        return false
+    end
+
+    allGameMessage({"MESSAGE_COC_COUNT_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+    getObjectFromGUID(CoCCount_GUID).setLock(false)
+    local labelButtonParam = {
+       index = 1, label = translate("BUTTON_LABEL_PROMPT_MOVE_COUNT"), click_function = 'doNothing',
+       position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=3.8}, width = 0, height=0, font_size = 200, function_owner = nil
+    }
+    local skipFigureButtonParam = {
+       index = 2, label = translate("BUTTON_LABEL_SKIP_COUNT"), click_function = 'skipFigureButton',
+       position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=4.5}, width = 1400, height=600, font_size = 200, function_owner = nil
+    }
+    local CoCMiddlePosition = getObjectFromGUID(EXPANSION_BAGS['CoC'].contents['CoCStartingTiles'].contents[6].guid).getPosition()
+    CoCMiddlePosition.x = CoCMiddlePosition.x + TILE_SPACING / 2
+    createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, labelButtonParam, true)
+    createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, skipFigureButtonParam, true)
+
+    return true
+end
+
+function CoCPrepareStartingTiles()
+
+    if not controlPanelSettings['StartingTileCoC'] then
+        return
+    end
+
+    CoCCount_GUID = EXPANSION_BAGS['CoC'].contents['CoCCount'].guid
+    local position_z_offset = 0
+
+    --move starting tiles to make room for the WoF
+    if controlPanelSettings['StartingTileWoF'] then
+        position_z_offset = position_z_offset + (TILE_SPACING * 2)
+    end
+    placeStartingItem('StartingTileCoC', 'CoC', 'CoCStartingTiles', nil, position_z_offset)
+
+    --only use the count if it isn't disabled
+    if not controlPanelSettings['CoCNoCount'] then
+        placeStartingItem('StartingTileCoC', 'CoC', 'CoCCount', nil, 0)
+    end
+end
+
+function CoCCheckTileForDragon(forbiddenZones)
+    if controlPanelSettings['StartingTileCoC'] then
+        table.insert(forbiddenZones, EXPANSION_BAGS['CoC'].contents['CoCStartingTiles'].contents[6].guid)
+        table.insert(forbiddenZones, EXPANSION_BAGS['CoC'].contents['CoCStartingTiles'].contents[7].guid)
+    end
+end
+
+function CoCLockCount()
+    local count = getObjectFromGUID(CoCCount_GUID)
+    if count ~= nil then
+        count.setLock(true)
+    end
+end
+
+function CoCPromptMovingToCarcassonne()
+    if not controlPanelSettings['StartingTileCoC'] then
+        return false
+    end
+
+    local someoneGotPoints = false
+    for player_color, points in pairs(earnedPointsThisTile) do
+        if points > 0 then
+            someoneGotPoints = true
+            break
+        end
+    end
+    if someoneGotPoints and (earnedPointsThisTile[activePlayers[currentPlayer]] == nil or earnedPointsThisTile[activePlayers[currentPlayer]] == 0) then
+        allGameMessage({"MESSAGE_COC_TO_CITY_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+        local labelButtonParam = {
+           index = 1, label = translate("BUTTON_LABEL_PROMPT_COC"), click_function = 'doNothing',
+           position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=3.8}, width = 0, height=0, font_size = 200, function_owner = nil
+        }
+        local skipFigureButtonParam = {
+           index = 2, label = translate("BUTTON_LABEL_SKIP_PLACING_FIGURE"), click_function = 'skipFigureButton',
+           position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=4.5}, width = 1400, height=600, font_size = 200, function_owner = nil
+        }
+        local CoCMiddlePosition = getObjectFromGUID(EXPANSION_BAGS['CoC'].contents['CoCStartingTiles'].contents[6].guid).getPosition()
+        CoCMiddlePosition.x = CoCMiddlePosition.x + TILE_SPACING / 2
+        createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, labelButtonParam, true)
+        createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, skipFigureButtonParam, true)
+        return true
+    end
+
+    return false
+end
+
+--TODO: Refactor this
+function CoCPromptMovingFromCarcassonne()
+    if currentMiniTurn == nil then
+        if gameIsActive() then
+            currentMiniTurn = currentPlayer + 1
+        else --this assumes that the script had moved to the next player, even though there were no tiles left. Should be the player after the one that placed the last tile
+            currentMiniTurn = currentPlayer
+        end
+    end
+    if controlPanelSettings['StartingTileCoC'] then
+        --find the count so that ihe feature it is on can be excluded
+        if carcassonneFigures == nil then
+            carcassonneFigures = {}
+            if barnFeatureNumbers == nil then
+                barnFeatureNumbers = {}
+            end
+
+            local countNameOfFeature = nil
+            if not controlPanelSettings['CoCNoCount'] then
+                local count = getObjectFromGUID(EXPANSION_BAGS['CoC'].contents['CoCCount'].guid)
+                local countXIndex, countZIndex, countXPosition, countZPosition = getFigureTileLocation(count)
+                if tileGridOccupied(countXIndex, countZIndex) then
+                    local countClosestPosition = findClosestPosition(countXIndex, countZIndex, countXPosition, countZPosition)
+                    local countFeatureNum = tileGrid[countXIndex][countZIndex].featureMap[countClosestPosition]
+                    countNameOfFeature = featureList[countFeatureNum].nameOfFeature
+                end
+            end
+
+            --find all followers in the city of carcassonne
+            for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
+                if table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) or obj.getVar('figureName') == 'Barn' then
+                    local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
+                    if tileGridOccupied(xIndex, zIndex) then
+                        local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
+                        local featureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
+
+                        if featureNum ~= nil and featureList[featureNum] ~= nil then
+                            if obj.getVar('figureName') == 'Barn' then
+                                table.insert(barnFeatureNumbers, featureNum)
+                            else
+                                local nameOfFeature = featureList[featureNum].nameOfFeature
+                                if string.sub(nameOfFeature,1,8) == 'Quarter-' and nameOfFeature ~= countNameOfFeature then
+                                    local quarter = string.sub(nameOfFeature,9)
+                                    if carcassonneFigures[obj.getVar('owner')] == nil then
+                                        carcassonneFigures[obj.getVar('owner')] = {}
+                                    end
+                                    carcassonneFigures[obj.getVar('owner')][obj.getGUID()] = quarter
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        --this is necessary if the game is loaded during this turn state. I don't want to save it to the save file so i have to make this check.
+        if barnFeatureNumbers == nil then
+            barnFeatureNumbers = {}
+            for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
+                if obj.getVar('figureName') == 'Barn' then
+                    local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
+                    if tileGridOccupied(xIndex, zIndex) then
+                        local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
+                        local featureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
+
+                        if featureNum ~= nil and featureList[featureNum] ~= nil then
+                            if obj.getVar('figureName') == 'Barn' then
+                                table.insert(barnFeatureNumbers, featureNum)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        while true do
+            if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
+            --https://stackoverflow.com/a/1252776
+            local next = next
+            if next(carcassonneFigures) == nil then break end
+            local hasCity = false
+            local hasRoad = false
+            local hasCloister = false
+            local hasField = false
+            if gameIsActive() then
+                local newTile = getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid)
+                local newTileData = getTileDataForTile(newTile)
+                local tileRotation = tileGrid[lastPlacedTileX][lastPlacedTileZ].rotation
+                if newTileData.sides[1] ~= 'Abbey' then
+                    local specialFeatures = newTileData.specialFeatures
+                    for tilePosition=1, 12 do --roads and cities
+                        local featureMapPosition = tilePositionToFeatureMapPosition(tilePosition, tileRotation)
+                        local featureNum = getFeatureNumAt(lastPlacedTileX, lastPlacedTileZ, featureMapPosition)
+                        if featureNum ~= nil and featureList[featureNum] ~= nil then
+                            local nameOfFeature = featureList[featureNum].nameOfFeature
+                            if nameOfFeature == 'Field' and table.contains(barnFeatureNumbers, featureNum) and not controlPanelSettings['BaseDisableFields'] then
+                                hasField = true
+                            elseif featureList[featureNum].numOpenings == 0 then
+                                if nameOfFeature == 'Road' and not controlPanelSettings['BaseDisableRoads'] then
+                                    hasRoad = true
+                                end
+                                if nameOfFeature == 'City' and not controlPanelSettings['BaseDisableCities'] then
+                                    hasCity = true
+                                end
+                                if table.contains(CLOISTER_FEATURES, nameOfFeature) and not controlPanelSettings['BaseDisableCloisters'] then
+                                    hasCloister = true
+                                end
+                            end
+                        end
+                    end
+                else --if an abbey was used, then we cannot simply traverse it's features like above in order to find completed features. instead, we traverse the surrounding features
+                    for i=1, 12 do --roads and cities
+                        local tile = newTile
+                        local rotation = tileGrid[lastPlacedTileX][lastPlacedTileZ].rotation
+                        local direction = (3 + i + rotation) % 4 + 1
+                        local newX = lastPlacedTileX + SIDE_DELTA[direction].x
+                        local newZ = lastPlacedTileZ + SIDE_DELTA[direction].z
+                        if tileGridOccupied(newX, newZ) then
+                            local newTile = getObjectFromGUID(tileGrid[newX][newZ].tile_guid)
+                            local newTileRotation = tileGrid[newX][newZ].rotation
+                            local newFeatureMapPosition = tilePositionToFeatureMapPosition(direction, newTileRotation)
+                            local featureNum = getFeatureNumAt(newX, newZ, newFeatureMapPosition)
+                            if featureNum ~= nil and featureList[featureNum] ~= nil then
+                                if featureList[featureNum].numOpenings == 0 then
+                                    local nameOfFeature = featureList[featureNum].nameOfFeature
+                                    if nameOfFeature == 'Road' and not controlPanelSettings['BaseDisableRoads'] then
+                                        hasRoad = true
+                                    end
+                                    if nameOfFeature == 'City' and not controlPanelSettings['BaseDisableCities'] then
+                                        hasCity = true
+                                    end
+                                    if table.contains(CLOISTER_FEATURES, nameOfFeature) and not controlPanelSettings['BaseDisableCloisters'] then
+                                        hasCloister = true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                --check neighbors for completed cloisters
+                for _, offset in ipairs(DIAGONAL_DELTA) do
+                    local neighborX = lastPlacedTileX + offset.x
+                    local neighborZ = lastPlacedTileZ + offset.z
+                    if tileGridOccupied(neighborX, neighborZ) then
+                        for _, neighborFeatureNum in pairs(tileGrid[neighborX][neighborZ].featureMap) do
+                            if table.contains(CLOISTER_FEATURES, featureList[neighborFeatureNum].nameOfFeature) then
+                                if featureList[neighborFeatureNum].numOpenings == 0 then
+                                    hasCloister = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            local gameover = not gameIsActive()
+            local hasAnything = false
+            if (hasRoad or gameover) and carcassonneFigures[activePlayers[currentMiniTurn]] ~= nil then
+                --allGameMessage({"{c1} has followers at the Blacksmith that can be moved to the completed road.", {'{c1}', activePlayers[currentMiniTurn]}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                for follower_guid, quarter in pairs(carcassonneFigures[activePlayers[currentMiniTurn]]) do
+                    if quarter == 'Blacksmith' then
+                        hasAnything = true
+                        getObjectFromGUID(follower_guid).highlightOn({1,1,1})
+                        getObjectFromGUID(follower_guid).setLock(false)
+                    end
+                end
+            end
+            if (hasCity or gameover) and carcassonneFigures[activePlayers[currentMiniTurn]] ~= nil then
+                --allGameMessage({"{c1} has followers at the Blacksmith that can be moved to the completed road.", {'{c1}', activePlayers[currentMiniTurn]}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                for follower_guid, quarter in pairs(carcassonneFigures[activePlayers[currentMiniTurn]]) do
+                    if quarter == 'Castle' then
+                        hasAnything = true
+                        getObjectFromGUID(follower_guid).highlightOn({1,1,1})
+                        getObjectFromGUID(follower_guid).setLock(false)
+                    end
+                end
+            end
+            if (hasCloister or gameover) and carcassonneFigures[activePlayers[currentMiniTurn]] ~= nil then
+                --allGameMessage({"{c1} has followers at the Blacksmith that can be moved to the completed road.", {'{c1}', activePlayers[currentMiniTurn]}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                for follower_guid, quarter in pairs(carcassonneFigures[activePlayers[currentMiniTurn]]) do
+                    if quarter == 'Cathedral' then
+                        hasAnything = true
+                        getObjectFromGUID(follower_guid).highlightOn({1,1,1})
+                        getObjectFromGUID(follower_guid).setLock(false)
+                    end
+                end
+            end
+            if (hasField or gameover) and carcassonneFigures[activePlayers[currentMiniTurn]] ~= nil then
+                --allGameMessage({"{c1} has followers at the Blacksmith that can be moved to the completed road.", {'{c1}', activePlayers[currentMiniTurn]}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                for follower_guid, quarter in pairs(carcassonneFigures[activePlayers[currentMiniTurn]]) do
+                    if quarter == 'Market' then
+                        hasAnything = true
+                        getObjectFromGUID(follower_guid).highlightOn({1,1,1})
+                        getObjectFromGUID(follower_guid).setLock(false)
+                    end
+                end
+            end
+            if hasAnything then
+                if gameover then
+                    allGameMessage({"MESSAGE_COC_FROM_CITY_GAMEOVER_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                else
+                    allGameMessage({"MESSAGE_COC_FROM_CITY_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+                end
+                local labelButtonParam = {
+                   index = 1, label = translate("BUTTON_LABEL_PROMPT_PLACE_FIGURE"), click_function = 'doNothing',
+                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=3.8}, width = 0, height=0, font_size = 200, function_owner = nil
+                }
+                local skipFigureButtonParam = {
+                   index = 2, label = translate("BUTTON_LABEL_SKIP_PLACING_FIGURE"), click_function = 'CoCSkipPlacingFigure',
+                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=4.5}, width = 1400, height=600, font_size = 200, function_owner = nil
+                }
+                local CoCMiddlePosition = getObjectFromGUID(EXPANSION_BAGS['CoC'].contents['CoCStartingTiles'].contents[6].guid).getPosition()
+                CoCMiddlePosition.x = CoCMiddlePosition.x + TILE_SPACING / 2
+                createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, labelButtonParam, true)
+                createNormalizedArbitraryButton({x=-CoCMiddlePosition.x, y=CoCMiddlePosition.y, z=-CoCMiddlePosition.z}, skipFigureButtonParam, true)
+                return
+            else
+                carcassonneFigures[activePlayers[currentMiniTurn]] = nil
+                currentMiniTurn = currentMiniTurn + 1
+            end
+        end
+        currentMiniTurn = nil
+        carcassonneFigures = nil
+        barnFeatureNumbers = nil
+    end
+end
+
+function CoCSkipPlacingFigure(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        clearArbitraryButtons()
+        for follower_guid, quarter in pairs(carcassonneFigures[activePlayers[currentMiniTurn]]) do
+            getObjectFromGUID(follower_guid).highlightOff()
+            getObjectFromGUID(follower_guid).setLock(true)
+        end
+        carcassonneFigures[activePlayers[currentMiniTurn]] = nil
+        currentMiniTurn = currentMiniTurn + 1
+        CoCPromptMovingFromCarcassonne()
+        return nextState('next')
+    end
+end
+
+--Restore any saved data from KnRB expansion
+function KnRBLoadData(saved_data)
+    KnRBRobber_GUID = saved_data.robber_GUID
+    KnRBKing_GUID = saved_data.king_GUID
+    CoCCount_GUID = saved_data.count_GUID
+end
+
+--Restore any saved data from KnRB expansion
+function KnRBSaveData(saved_data)
+    saved_data.robber_GUID = KnRBRobber_GUID
+    saved_data.king_GUID = KnRBKing_GUID
+    saved_data.count_GUID = CoCCount_GUID
+end

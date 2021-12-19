@@ -667,26 +667,10 @@ end
 function prepareStartingTiles()
 
     --determine if any river expansion will be used as a starting tile
-    local placeRiverAsStartingTile = not controlPanelSettings['RiverMixAll']
+    local placeRiverAsStartingTile = not controlPanelSettings['RiverMixAll'] and
+                                     not controlPanelSettings['StartingTileCoC']
 
-    -- Place starting tiles for City of Carcassonne
-    if controlPanelSettings['StartingTileCoC'] then
-        local position_z_offset = 0
-
-        --move starting tiles to make room for the WoF
-        if controlPanelSettings['StartingTileWoF'] then
-            position_z_offset = position_z_offset + (TILE_SPACING * 2)
-        end
-        placeStartingItem('StartingTileCoC', 'CoC', 'CoCStartingTiles', nil, position_z_offset)
-
-        --only use the count if it isn't disabled
-        if not controlPanelSettings['CoCNoCount'] then
-            placeStartingItem('StartingTileCoC', 'CoC', 'CoCCount', nil, 0)
-        end
-
-        -- River can be used, but not as a starting tile
-        placeRiverAsStartingTile = false
-    end
+    CoCPrepareStartingTiles()
 
     -- Place starting tiles for WoF
     if controlPanelSettings['StartingTileWoF'] then

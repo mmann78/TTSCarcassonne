@@ -458,7 +458,8 @@ function playerStateHandler()
     elseif turnState == 'check added tile feature extensions' then
         return checkAddedTileFeatureExtensions()
     elseif turnState == 'prompt moving from carcassonne' then
-        return promptMovingFromCoC()
+        CoCPromptMovingFromCarcassonne()
+        return nextState('next')
     elseif turnState == 'check added tile feature - dragon' then
         shepherdAwaitingAction = nil
         return checkTileForDragon()
@@ -493,15 +494,16 @@ function playerStateHandler()
         return replaceFinishedWagons()
     elseif turnState == 'prompt moving to carcassonne' then
         clearFigureOptions()
-        return promptMovingToCarcassonne()
+        if not CoCPromptMovingToCarcassonne() then
+            return nextState('not eligible')
+        end
     elseif turnState == 'prompt moving count' then
         clearFigureOptions()
-        return promptMovingCount()
-    elseif turnState == 'check for extra builder turn' then
-        local count = getObjectFromGUID(EXPANSION_BAGS['CoC'].contents['CoCCount'].guid)
-        if count ~= nil then
-            count.setLock(true)
+        if not KnRBPromptMovingCount() then
+            return nextState('not eligible')
         end
+    elseif turnState == 'check for extra builder turn' then
+        CoCLockCount()
         clearArbitraryButtons(true)
         if hasBuilderAwaitingAction then
             hasAlreadyTakenBuilderTile = true
@@ -513,7 +515,8 @@ function playerStateHandler()
     elseif turnState == 'end turn' then
         return endTurn()
     elseif turnState == 'game over - prompt moving from carcassonne' then
-        return promptMovingFromCoC()
+        CoCPromptMovingFromCarcassonne()
+        return nextState('next')
     elseif turnState == 'game over - scoring' then
         clearFigureOptions()
         return scoreFeatures()
