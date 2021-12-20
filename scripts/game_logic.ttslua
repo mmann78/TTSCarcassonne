@@ -248,9 +248,7 @@ function initializeScoreSummary()
         scoreSummary[player_color]['Road'] = 0
         scoreSummary[player_color]['Field'] = 0
         scoreSummary[player_color]['Cloister'] = 0
-        if controlPanelSettings['TnBTradeGoods'] then
-            scoreSummary[player_color]['Trade Goods'] = 0
-        end
+        TnBInitializeScoreSummary(scoreSummary[player_color])
         if controlPanelSettings['HnSShepherd'] then
             scoreSummary[player_color]['Shepherd'] = 0
         end
@@ -496,9 +494,8 @@ function checkAddedTileSpecialFigureExtensions()
                     if figure.getVar('owner') == activePlayers[currentPlayer] then
                         if figure.getVar('figureName') == 'Shepherd' and featureList[addedFeatureNum].nameOfFeature == 'Field' then
                             shepherdAwaitingAction = figure.getGUID()
-                        elseif figure.getVar('figureName') == 'Builder' and (featureList[addedFeatureNum].nameOfFeature == 'City' or featureList[addedFeatureNum].nameOfFeature == 'Road') and not hasAlreadyTakenBuilderTile then
-                            hasBuilderAwaitingAction = true
                         end
+                        TnBBuilderCheckAddedTileFeature(figure, featureList[addedFeatureNum].nameOfFeature)
                     end
                 end
             end
@@ -1483,23 +1480,7 @@ function checkAddedTileFeatureExtensions()
                 KnRBCheckFeatureMap(feature)
 
                 --unlike the above, can immediately award trade tokens
-                if controlPanelSettings['TnBTradeGoods'] and feature.nameOfFeature == 'City' then
-                    for _, specialFeature in ipairs(feature.specialFeatures) do
-                        if table.contains(TRADE_GOOD_TYPES, specialFeature) then
-                            local tradeGoodPile = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnB' .. specialFeature .. 'TokenStack'].guid) --this is kind of hacky but it saves copy-pasting the code 3 times
-                            local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS[specialFeature].x, PLAYER_POSSESSION_POSITIONS[specialFeature].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
-                            if tradeGoodPile ~= nil then
-                                local params = {}
-                                params.position = {player_possession_areas[activePlayers[currentPlayer]].x + x, 2, player_possession_areas[activePlayers[currentPlayer]].z + z}
-                                params.rotation = {0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0}
-                                tradeGoodPile.takeObject(params)
-                                allGameMessage({"MESSAGE_TRADE_TOKEN_AWARD", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{s1}', specialFeature}}, player_color_tints[activePlayers[currentPlayer]])
-                            else
-                                allErrorMessage({"MESSAGE_TRADE_TOKENS_ERROR_MISSING", {'{s1}', specialFeature}})
-                            end
-                        end
-                    end
-                end
+                TnBCheckFeatureMap(feature)
             end
             featureVisited[featureNum] = true
         end
@@ -1902,7 +1883,7 @@ function removeDependentFigures(object)
     end
     if followersCount == 0 then
         for _, figure in ipairs(traversedSpecialFigures) do
-            if (figure.getVar('figureName') == 'Pig' or figure.getVar('figureName') == 'Builder') and figure.getVar('owner') == object.getVar('owner') then
+            if TnBIsDependentFigure(figure) and figure.getVar('owner') == object.getVar('owner') then
                 table.insert(removedFigures, {guid=figure.getGUID(), winner=false})
                 allGameMessage({"MESSAGE_DEPENDENT_FIGURE_REMOVED", {'{p1}', getPlayerOwnerName(figure.getVar('owner'))}, {'{f1}', figure.getName()}}, player_color_tints[object.getVar('owner')])
             end
@@ -2712,66 +2693,15 @@ function scoreFeatures()
         end
     end
     if gameover then --do possessions now
-        if controlPanelSettings['TnBTradeGoods'] then
-            for _, tokenType in ipairs(TRADE_TOKEN_TYPES) do --trade tokens
-                local highestNumTokens = 0
-                local tokenCounts = {}
-                --find the highest count for this token
-                for _, player in ipairs(activePlayers) do
-                    local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
-                    local playerNumTokens = 0
-                    for _, obj in ipairs(playerPossessions) do
-                        if obj.getVar('tokenName') == tokenType then
-                            local quantity = obj.getQuantity()
-                            if quantity == -1 then quantity = 1 end
-                            if tokenCounts[player] == nil then
-                                tokenCounts[player] = quantity
-                            else
-                                tokenCounts[player] = tokenCounts[player] + quantity
-                            end
-                        end
-                    end
-                    if tokenCounts[player] ~= nil and tokenCounts[player] > highestNumTokens then
-                        highestNumTokens = tokenCounts[player]
-                    end
-                end
-                if highestNumTokens > 0 then
-                    --give points to players with the most tokens
-                    for _, player in ipairs(activePlayers) do
-                        local winner
-                        if tokenCounts[player] == highestNumTokens then
-                            winner = true
-                            allGameMessage({"MESSAGE_SCORE_TRADE_TOKENS", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', 10}, {'{f1}', tokenType}}, player_color_tints[player])
-                            scorePoints(player, 'Trade Goods', 10)
-                        else
-                            winner = false
-                        end
-                        local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
-                        for _, obj in ipairs(playerPossessions) do
-                            if obj.getVar('tokenName') == tokenType then
-                                table.insert(removedFigures, {guid=obj.getGUID(), winner=winner})
-                                obj.setLock(false)
-                                obj.use_gravity = false
-                                obj.interactable = false
-                                --raise the token in the air
-                                if showMarkers == 'Both' or showMarkers == 'Scoring' then
-                                    obj.setPositionSmooth({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
-                                else
-                                    obj.setPosition({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
-                                end
-                            end
-                        end
-                    end
-                    traversedFeaturePositions = {}
-                    if showMarkers == 'Both' or showMarkers == 'Scoring' then
-                        praiseFiguresCameraFocus(true)
-                        Timer.create({identifier=os.clock(), function_name='praiseFigures', function_owner=nil, parameters=nil, delay=0.9})
-                    else
-                        returnFigures()
-                    end
-                    return
-                end
-            end
+        --TODO: Find a way to loop over the trade tokens without recommuting their values
+        if TnBScoreFeatures('Wine Token') then
+            return
+        end
+        if TnBScoreFeatures('Wheat Token') then
+            return
+        end
+        if TnBScoreFeatures('Cloth Token') then
+            return
         end
         if controlPanelSettings['GoldminesGold'] then
             --find the highest count for this token
@@ -3246,25 +3176,12 @@ function returnFiguresCoroutine()
         -- move the tokens away from the player possession area. It doesn't really matter where, as long as we move them so they aren't counted twice.
         if KnRBIsFigureReturned(figure_obj) then
             KnRBReturnFigure(figure_obj)
-        elseif table.contains(TRADE_TOKEN_TYPES, figure_obj.getVar('tokenName')) or figure_obj.getVar('figureName') == GOLD_BAR_NAME then
-            local targetPosition = {x = NEUTRAL_ITEMS_LOCATION.x, y = NEUTRAL_ITEMS_LOCATION.y, z = NEUTRAL_ITEMS_LOCATION.z}
-            local container = nil
-            if figure_obj.getVar('tokenName') == 'Wheat Token' then
-                container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBWheatTokenStack'].guid)
-            elseif figure_obj.getVar('tokenName') == 'Wine Token' then
-                container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBWineTokenStack'].guid)
-            elseif figure_obj.getVar('tokenName') == 'Cloth Token' then
-                container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBClothTokenStack'].guid)
-            elseif figure_obj.getVar('figureName') == GOLD_BAR_NAME then
-                container = getObjectFromGUID(EXPANSION_BAGS['Goldmines'].contents['GoldminesGold'].guid)
-            end
+        elseif TnBIsFigureReturned(figure_obj) then
+            TnBReturnFigure(figure_obj)
+        elseif figure_obj.getVar('figureName') == GOLD_BAR_NAME then
+            local container = getObjectFromGUID(EXPANSION_BAGS['Goldmines'].contents['GoldminesGold'].guid)
             if container ~= nil then
                 container.putObject(figure_obj)
-            elseif table.contains(TRADE_TOKEN_TYPES, figure_obj.getVar('tokenName')) then
-                allErrorMessage("Warning: Could not find target container for " .. figure_obj.getName() .. ". It is being moved to an arbitrary location.", activePlayers[currentPlayer])
-                figure_obj.setPositionSmooth(targetPosition, false, false)
-            else
-                figure_obj.setPositionSmooth(targetPosition, false, false)
             end
         else
             if figurePositions[figure_obj.getVar('owner')] ~= nil and figurePositions[figure_obj.getVar('owner')][figure_obj.getGUID()] ~= nil and getObjectFromGUID(figurepad_GUIDs[figure_obj.getVar('owner')]) ~= nil then

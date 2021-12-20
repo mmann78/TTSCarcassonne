@@ -319,8 +319,6 @@ hasAlreadyUsedMagicPortal = false
 flier = nil
 flierOffset = nil
 flierDirection = nil
-hasBuilderAwaitingAction = false
-hasAlreadyTakenBuilderTile = false
 hasAlreadyUsedFlier = false
 hasRansomedPrisoner = false
 seducedKnights = {}
@@ -517,6 +515,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\scripts\setup_helpers
 
 #include !\TTSCarcassonne\scripts\expansion_rivers
+
+#include !\TTSCarcassonne\scripts\expansion_traders_builders
 
 #include !\TTSCarcassonne\scripts\expansion_count_king_robber
 

@@ -1,0 +1,205 @@
+--Encapsulate the behavior of the Traders and Builders expansion (TnB)
+
+local hasBuilderAwaitingAction = false
+local hasAlreadyTakenBuilderTile = false
+
+--Scoring data specific to expansion
+function TnBInitializeScoreSummary(player)
+    if controlPanelSettings['TnBTradeGoods'] then
+        player['Trade Goods'] = 0
+    end
+end
+
+--Immediately award trade tokens
+function TnBCheckFeatureMap(feature)
+    if controlPanelSettings['TnBTradeGoods'] and feature.nameOfFeature == 'City' then
+        for _, specialFeature in ipairs(feature.specialFeatures) do
+            if table.contains(TRADE_GOOD_TYPES, specialFeature) then
+                local player = activePlayers[currentPlayer]
+                local tradeGoodPile = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnB' .. specialFeature .. 'TokenStack'].guid) --this is kind of hacky but it saves copy-pasting the code 3 times
+                local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS[specialFeature].x, PLAYER_POSSESSION_POSITIONS[specialFeature].z, player_possession_areas[player].rotation)
+                if tradeGoodPile ~= nil then
+                    local params = {}
+                    params.position = {player_possession_areas[player].x + x, 2, player_possession_areas[player].z + z}
+                    params.rotation = {0,  player_possession_areas[player].rotation * -90, 0}
+                    tradeGoodPile.takeObject(params)
+                    allGameMessage({"MESSAGE_TRADE_TOKEN_AWARD", {'{p1}', getPlayerOwnerName(player)}, {'{s1}', specialFeature}}, player_color_tints[player])
+                else
+                    allErrorMessage({"MESSAGE_TRADE_TOKENS_ERROR_MISSING", {'{s1}', specialFeature}})
+                end
+            end
+        end
+    end
+end
+
+--Is the figure to be returned the trade tokens?
+function TnBIsFigureReturned(figure_obj)
+    if table.contains(TRADE_TOKEN_TYPES, figure_obj.getVar('tokenName')) then
+        return true
+    end
+
+    return false
+end
+
+function TnBReturnFigure(figure_obj)
+    local container = nil
+    if figure_obj.getVar('tokenName') == 'Wheat Token' then
+        container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBWheatTokenStack'].guid)
+    elseif figure_obj.getVar('tokenName') == 'Wine Token' then
+        container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBWineTokenStack'].guid)
+    elseif figure_obj.getVar('tokenName') == 'Cloth Token' then
+        container = getObjectFromGUID(EXPANSION_BAGS['TnB'].contents['TnBClothTokenStack'].guid)
+    else
+        local targetPosition = {x = NEUTRAL_ITEMS_LOCATION.x, y = NEUTRAL_ITEMS_LOCATION.y, z = NEUTRAL_ITEMS_LOCATION.z}
+        allErrorMessage("Warning: Could not find target container for " .. figure_obj.getName() .. ". It is being moved to an arbitrary location.", activePlayers[currentPlayer])
+        figure_obj.setPositionSmooth(targetPosition, false, false)
+        return
+    end
+
+    container.putObject(figure_obj)
+end
+
+function TnBScoreFeatures(tokenType)
+    if not controlPanelSettings['TnBTradeGoods'] then
+        return false
+    end
+
+    local scoredTokens = false
+    local highestNumTokens = 0
+    local tokenCounts = {}
+
+    --find the highest count for this token
+    for _, player in ipairs(activePlayers) do
+        local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
+        local playerNumTokens = 0
+        for _, obj in ipairs(playerPossessions) do
+            if obj.getVar('tokenName') == tokenType then
+                local quantity = obj.getQuantity()
+                if quantity == -1 then
+                    quantity = 1
+                end
+                if tokenCounts[player] == nil then
+                    tokenCounts[player] = quantity
+                else
+                    tokenCounts[player] = tokenCounts[player] + quantity
+                end
+            end
+        end
+        if tokenCounts[player] ~= nil and tokenCounts[player] > highestNumTokens then
+            highestNumTokens = tokenCounts[player]
+        end
+    end
+
+    if highestNumTokens > 0 then
+        scoredTokens = true
+
+        --give points to players with the most tokens
+        for _, player in ipairs(activePlayers) do
+            local winner
+            if tokenCounts[player] == highestNumTokens then
+                winner = true
+                allGameMessage({"MESSAGE_SCORE_TRADE_TOKENS", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', 10}, {'{f1}', tokenType}}, player_color_tints[player])
+                scorePoints(player, 'Trade Goods', 10)
+            else
+                winner = false
+            end
+            local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
+            for _, obj in ipairs(playerPossessions) do
+                if obj.getVar('tokenName') == tokenType then
+                    table.insert(removedFigures, {guid=obj.getGUID(), winner=winner})
+                    obj.setLock(false)
+                    obj.use_gravity = false
+                    obj.interactable = false
+                    --raise the token in the air
+                    if showMarkers == 'Both' or showMarkers == 'Scoring' then
+                        obj.setPositionSmooth({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
+                    else
+                        obj.setPosition({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
+                    end
+                end
+            end
+        end
+
+        traversedFeaturePositions = {}
+        if showMarkers == 'Both' or showMarkers == 'Scoring' then
+            praiseFiguresCameraFocus(true)
+            Timer.create({identifier=os.clock(), function_name='praiseFigures', function_owner=nil, parameters=nil, delay=0.9})
+        else
+            returnFigures()
+        end
+    end
+
+    return scoredTokens
+end
+
+function TnBBuilderCheckAddedTileFeature(figure, nameOfFeature)
+    if figure.getVar('figureName') == 'Builder' and (nameOfFeature == 'City' or nameOfFeature == 'Road') and not hasAlreadyTakenBuilderTile then
+        hasBuilderAwaitingAction = true
+    end
+end
+
+function TnBBuilderClearAddedTileFeature()
+    hasBuilderAwaitingAction = false
+
+end
+function TnBBuilderClearTakenBuilderTile()
+    hasAlreadyTakenBuilderTile = false
+end
+
+function TnBCheckBuilderAwaitingAction()
+    if hasBuilderAwaitingAction then
+        hasAlreadyTakenBuilderTile = true
+        allGameMessage({"MESSAGE_BUILDER_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+        return true
+    end
+    return false
+end
+
+function TnBIsValidBuilderLocation(newFigure, nameOfFeature)
+    if newFigure.getVar('figureName') == 'Builder' and nameOfFeature ~= 'Road' and nameOfFeature ~= 'City' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_BUILDER"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    return true
+end
+
+function TnBIsValidPigLocation(newFigure, nameOfFeature)
+    if newFigure.getVar('figureName') == 'Pig' and nameOfFeature ~= 'Field' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_PIG"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    return true
+end
+
+function TnBIsValidBuilderParent(newFigure, numFollowers)
+    if newFigure.getVar('figureName') == 'Builder' and numFollowers == 0 then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_BUILDER_NO_PARENT"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    return true
+end
+
+function TnBIsValidPigParent(newFigure, numFollowers)
+    if newFigure.getVar('figureName') == 'Pig' and numFollowers == 0 then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_PIG_NO_PARENT"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    return true
+end
+
+function TnBIsDependentFigure(figure)
+    local isDependent = figure.getVar('figureName') == 'Pig' or figure.getVar('figureName') == 'Builder'
+    return isDependent
+end
+
+--Restore any saved data from TnB expansion
+function TnBLoadData(saved_data)
+    hasBuilderAwaitingAction = saved_data.hasBuilderAwaitingAction
+    hasAlreadyTakenBuilderTile = saved_data.hasAlreadyTakenBuilderTile
+end
+
+--Restore any saved data from TnB expansion
+function TnBSaveData(saved_data)
+    saved_data.hasAlreadyTakenBuilderTile = hasAlreadyTakenBuilderTile
+    saved_data.hasBuilderAwaitingAction = hasBuilderAwaitingAction
+end

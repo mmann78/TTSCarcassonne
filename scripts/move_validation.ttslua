@@ -542,12 +542,10 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_GARDEN"}, activePlayers[currentPlayer]) end
         return false
     end
-    if newFigure.getVar('figureName') == 'Builder' and nameOfFeature ~= 'Road' and nameOfFeature ~= 'City' then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_BUILDER"}, activePlayers[currentPlayer]) end
+    if not TnBIsValidBuilderLocation(newFigure, nameOfFeature) then
         return false
     end
-    if newFigure.getVar('figureName') == 'Pig' and nameOfFeature ~= 'Field' then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_PIG"}, activePlayers[currentPlayer]) end
+    if not TnBIsValidPigLocation(newFigure, nameOfFeature) then
         return false
     end
     if newFigure.getVar('figureName') == 'Mayor' and nameOfFeature ~= 'City' then
@@ -602,18 +600,16 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
             end
         end
     end
-    if newFigure.getVar('figureName') == 'Builder' and numCurrentPlayerFollowers == 0 then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_BUILDER_NO_PARENT"}, activePlayers[currentPlayer]) end
+    if not TnBIsValidBuilderParent(newFigure, numCurrentPlayerFollowers) then
         return false
     end
-    if newFigure.getVar('figureName') == 'Pig' and numCurrentPlayerFollowers == 0 then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_PIG_NO_PARENT"}, activePlayers[currentPlayer]) end
+    if not TnBIsValidPigParent(newFigure, numCurrentPlayerFollowers) then
         return false
     end
     if (table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) and numFollowers == 0 and numBarns == 0) or
         (newFigure.getVar('figureName') == 'Shepherd' and numShepherds == 0) or
         (newFigure.getVar('figureName') == 'Barn' and numBarns == 0) or
-         newFigure.getVar('figureName') == 'Builder' or newFigure.getVar('figureName') == 'Pig' then
+         TnBIsDependentFigure(newFigure) then
         return true
     else
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FEATURE_ALREADY_OCCUPIED"}, activePlayers[currentPlayer]) end

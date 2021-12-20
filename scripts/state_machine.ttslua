@@ -262,7 +262,7 @@ function playerStateHandler()
             allGameMessage({"MESSAGE_STATE_NEW_TURN", {'{p1}', translate(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
             allGameMessage({"MESSAGE_STATE_NEW_TURN_CONTROL", {'{c1}', translate(activePlayers[currentPlayer])}, {'{p1}', stringToBracketedHex(getPlayerOwner(activePlayers[currentPlayer])) .. getPlayerOwnerName(activePlayers[currentPlayer]) .. stringToBracketedHex(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], nil)
         end
-        hasAlreadyTakenBuilderTile = false
+        TnBBuilderClearTakenBuilderTile()
         hasAlreadyUsedFlier = false
         confirmationDisplayed = false
         --ransoming a prisoner can only be done once per turn. No second ransom is allowed due to drawing an extra tile for the builder (CAR 136)
@@ -292,7 +292,7 @@ function playerStateHandler()
         seducedKnights = {}
         currentPlayerAbbot = nil
         shepherdAwaitingAction = nil
-        hasBuilderAwaitingAction = false
+        TnBBuilderClearAddedTileFeature()
         return nextState('next')
     elseif turnState == 'check added tile special figure extension' then
         return checkAddedTileSpecialFigureExtensions()
@@ -505,9 +505,7 @@ function playerStateHandler()
     elseif turnState == 'check for extra builder turn' then
         CoCLockCount()
         clearArbitraryButtons(true)
-        if hasBuilderAwaitingAction then
-            hasAlreadyTakenBuilderTile = true
-            allGameMessage({"MESSAGE_BUILDER_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+        if TnBCheckBuilderAwaitingAction() then
             return nextState('has builder')
         else
             return nextState('no builder')
