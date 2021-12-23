@@ -275,7 +275,8 @@ function playerStateHandler()
         createRansomButtons()
         return nextState('next')
     elseif turnState == 'reward fairy' then
-        return rewardFairy()
+        rewardFairy()
+        return nextState('next')
     elseif turnState == 'eliminate oldest flea' then
         return nextState('next')
     elseif turnState == 'awaiting tile placement' then
@@ -295,7 +296,8 @@ function playerStateHandler()
         TnBBuilderClearAddedTileFeature()
         return nextState('next')
     elseif turnState == 'check added tile special figure extension' then
-        return checkAddedTileSpecialFigureExtensions()
+        checkAddedTileSpecialFigureExtensions()
+        return nextState('next')
     elseif turnState == 'check added tile feature - hill' then
         return checkTileForHill()
     elseif turnState == 'check added tile feature - wheel of fortune' then
@@ -312,13 +314,16 @@ function playerStateHandler()
         getObjectFromGUID(dragon_GUID).setLock(true)
         return nextState('next')
     elseif turnState == 'check added tile feature - princess' then
-        return checkTileForPrincess()
+        checkTileForPrincess()
+        return nextState('next')
     elseif turnState == 'check added tile feature - magic portal' then
-        return checkTileForMagicPortal()
+        checkTileForMagicPortal()
+        return nextState('next')
     elseif turnState == 'check added tile feature - gold' then
         return checkTileForGold()
     elseif turnState == 'place gold on tile' then
-        return addGoldToTile(lastPlacedTileX, lastPlacedTileZ)
+        addGoldToTile(lastPlacedTileX, lastPlacedTileZ)
+        nextState('next')
     elseif turnState == 'awaiting gold placement' then
         gameNotification({"MESSAGE_GOLD_MINES_PLACE_GOLD_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         return displayGoldButtons()
@@ -451,12 +456,14 @@ function playerStateHandler()
         return displayPhantomButtons()
     elseif turnState == 'post figure event - prompt shepherd' then
         if shepherdAwaitingAction ~= nil then
-            return promptShepherd()
+            promptShepherd()
+            return
         else
             return nextState('next')
         end
     elseif turnState == 'check added tile feature extensions' then
-        return checkAddedTileFeatureExtensions()
+        checkAddedTileFeatureExtensions()
+        return nextState('next')
     elseif turnState == 'prompt moving from carcassonne' then
         CoCPromptMovingFromCarcassonne()
         return nextState('next')

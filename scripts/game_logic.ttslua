@@ -501,7 +501,6 @@ function checkAddedTileSpecialFigureExtensions()
             end
         end
     end
-    return nextState('next')
 end
 
 function checkTileForHill()
@@ -1020,7 +1019,6 @@ function checkTileForPrincess()
             end
         end
     end
-    return nextState('next')
 end
 
 function checkTileForMagicPortal()
@@ -1035,7 +1033,6 @@ function checkTileForMagicPortal()
             end
         end
     end
-    return nextState('next')
 end
 
 function checkTileForLake(tile)
@@ -1201,7 +1198,6 @@ function addGoldToTile(xIndex, zIndex)
     else
 
     end
-    nextState('next')
 end
 
 function addFerryToTile(tile, link)
@@ -1446,6 +1442,8 @@ function placeGold(i)
     local xIndex = lastPlacedTileX + DIAGONAL_DELTA[i].x
     local zIndex = lastPlacedTileZ + DIAGONAL_DELTA[i].z
     addGoldToTile(xIndex, zIndex)
+    nextState('next')
+
 end
 
 --check for special actions to take when the latest tile has added to or finished a feature
@@ -1487,8 +1485,6 @@ function checkAddedTileFeatureExtensions()
     end
 
     KnRBCheckFeature()
-
-    return nextState('next')
 end
 
 --events that should occur after placing a valid tile
@@ -1971,7 +1967,6 @@ function promptShepherd()
     createNormalizedButton(shepherd, shepherdExpandButtonParam, true)
     createNormalizedButton(shepherd, shepherdHerdButtonParam, true)
     allGameMessage({"MESSAGE_SHEPHERD_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
-    return
 end
 
 function addSheepToFlockButton(object, sPlayer)
@@ -2803,7 +2798,6 @@ function rewardFairy()
             end
         end
     end
-    return nextState('next')
 end
 
 --Find any followers that are on the same tile as the fairy

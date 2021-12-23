@@ -87,7 +87,8 @@ function AIStateHandler()
         startLuaCoroutine(self, 'AIDrawTileAndChooseTileLocation')
     elseif turnState == 'place gold on tile' then
         gameNotification("AI not implemented for expansion: The Goldmines", NEUTRAL_COLOR, activePlayers[currentPlayer])
-        return addGoldToTile(lastPlacedTileX, lastPlacedTileZ)
+        addGoldToTile(lastPlacedTileX, lastPlacedTileZ)
+		nextState('next')
     elseif turnState == 'awaiting gold placement' then
         gameNotification("AI not implemented for expansion: The Goldmines", NEUTRAL_COLOR, activePlayers[currentPlayer])
         return displayGoldButtons()
