@@ -1,0 +1,339 @@
+--Encapsulate the behavior of the Abbey and Mayor expansion (AnM)
+
+local wagonFeatures = {}
+local newBarn = nil
+
+--Clear data for the start of the next player's turn
+function AnMBeginTurn()
+    wagonFeatures = {}
+    newBarn = nil
+end
+
+function AnMSetWagonOwner(follower, featureNum)
+    if follower.getVar('figureName') == "Wagon" then
+        wagonFeatures[follower.getVar('owner')] = featureNum
+    end
+end
+
+--Ensure wagon can be placed after completed feature
+function AnMCheckReplaceFinishedWagons(newFigure, featureNum, player)
+    if newFigure.getVar('figureName') ~= 'Wagon' then
+        allErrorMessage({"MESSAGE_WAGON_ILLEGAL_FIGURE"}, player)
+        return false
+    end
+    if not AnMIsValidWagonLocation(newFigure, featureNum, player, true) then
+        return false
+    end
+
+    wagonFeatures[player] = nil
+    return true
+end
+
+function AnMReplaceFinishedWagons()
+    while true do
+        if currentMiniTurn == nil then
+            currentMiniTurn = currentPlayer
+        else
+            currentMiniTurn = currentMiniTurn + 1
+            if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
+            if currentMiniTurn == currentPlayer then break end
+        end
+        local player = activePlayers[currentMiniTurn]
+        if wagonFeatures[player] ~= nil then
+            if AnMHasAvailableWagonFeature(wagonFeatures[player]) then
+                allGameMessage({"MESSAGE_WAGON_PROMPT", {'{p1}', getPlayerOwnerName(player)}}, player_color_tints[player], player)
+                local labelButtonParam = {
+                   index = 1, label = translate("BUTTON_LABEL_PROMPT_REPLACE_WAGON"), click_function = 'doNothing',
+                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=1.8}, width = 0, height=0, font_size = 200, function_owner = nil
+                }
+                local skipFigureButtonParam = {
+                   index = 2, label = translate("BUTTON_LABEL_SKIP_WAGON"), click_function = 'AnMSkipWagonButton',
+                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=2.5}, width = 1400, height=600, font_size = 200, function_owner = nil
+                }
+                createNormalizedArbitraryButton({x=-lastPlacedTileX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=lastPlacedTileZ * TILE_SPACING - MIDDLE_OFFSET.z}, labelButtonParam, true)
+                createNormalizedArbitraryButton({x=-lastPlacedTileX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=lastPlacedTileZ * TILE_SPACING - MIDDLE_OFFSET.z}, skipFigureButtonParam, true)
+                return false
+            else
+                wagonFeatures[activePlayers[currentMiniTurn]] = nil
+                allGameMessage({"MESSAGE_WAGON_NO_FEATURES", {'{p1}', getPlayerOwnerName(player)}}, player_color_tints[player], player)
+            end
+        end
+    end
+    currentMiniTurn = nil
+    return true
+end
+
+function AnMIsValidWagonLocation(newFigure, featureNum, player, verbose)
+    local nameOfFeature = featureList[featureNum].nameOfFeature
+    local numOpenings = featureList[featureNum].numOpenings
+    if nameOfFeature == 'River' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FIGURE_ON_RIVER"}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+    if nameOfFeature == 'Carcassonne' or string.sub(nameOfFeature,1,8) == 'Quarter-' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_COC_NOT_ALLOWED"}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+    if nameOfFeature == 'Field' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON"}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+    if nameOfFeature == 'Road' and controlPanelSettings['BaseDisableRoads'] then
+        if verbose then allErrorMessage({"Invalid Location: Roads are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+    if nameOfFeature == 'City' and controlPanelSettings['BaseDisableCities'] then
+        if verbose then allErrorMessage({"Invalid Location: Cities are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+    if nameOfFeature == 'Cloister' and controlPanelSettings['BaseDisableCloisters'] then
+        if verbose then allErrorMessage({"Invalid Location: Cloisters are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+
+    local wagonFeatureNum = wagonFeatures[activePlayers[currentMiniTurn]]
+    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil or linkedFeatures['Road Intersection'][wagonFeatureNum][featureNum] ~= true then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON_NOT_CONNECTED"}, activePlayers[currentMiniTurn]) end
+        return false
+    end
+
+    if numOpenings > 0 then
+        for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
+            if obj ~= newFigure and table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
+                local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
+                if tileGridOccupied(xIndex, zIndex) then
+                    local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
+                    local followerFeatureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
+                    if followerFeatureNum == featureNum then
+                        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FEATURE_ALREADY_OCCUPIED"}, activePlayers[currentMiniTurn]) end
+                        return false
+                    end
+                end
+            end
+        end
+        return true
+    end
+    if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON_ALREADY_COMPLETE"}, activePlayers[currentMiniTurn]) end
+    return false
+end
+
+function AnMHasAvailableWagonFeature(wagonFeatureNum)
+    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil then return false end
+    local linkedRoadFeatures = table.shallow_copy(linkedFeatures['Road Intersection'][wagonFeatureNum])
+
+    --trim the features that are already complete
+    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
+        if featureList[linkedFeatureNum] ~= nil then
+            if table.contains(CLOISTER_FEATURES, featureList[linkedFeatureNum].nameOfFeature) then
+                local numOpenings = 8
+                for x=-1, 1 do
+                    for z=-1, 1 do
+                        if not (x == 0 and z == 0) and tileGridOccupied(featureList[linkedFeatureNum].featureLocation.x + x, featureList[linkedFeatureNum].featureLocation.z + z) then
+                            numOpenings = numOpenings - 1
+                        end
+                    end
+                end
+                if numOpenings <= 0 then
+                    linkedRoadFeatures[linkedFeatureNum] = nil
+                end
+            elseif featureList[linkedFeatureNum].numOpenings == 0 then
+                linkedRoadFeatures[linkedFeatureNum] = nil
+            end
+        else
+            linkedRoadFeatures[linkedFeatureNum] = nil
+        end
+    end
+
+    for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
+        if table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
+            local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
+            if tileGridOccupied(xIndex, zIndex) then
+                local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
+                local featureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
+                if featureNum ~= nil then
+                    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
+                        if linkedFeatureNum == featureNum then
+                            linkedRoadFeatures[linkedFeatureNum] = nil
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local numberOfLinkedFeatures = 0
+    for _, _ in pairs(linkedRoadFeatures) do
+        numberOfLinkedFeatures = numberOfLinkedFeatures + 1
+    end
+    if numberOfLinkedFeatures > 0 then return true else return false end
+end
+
+function AnMSkipWagonButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        clearArbitraryButtons()
+        wagonFeatures[activePlayers[currentMiniTurn]] = nil
+        if AnMReplaceFinishedWagons() then
+            return nextState('next')
+        end
+    end
+end
+
+function AnMShowWagonFeatureMarkers(newFigure, player)
+    local locationMarkers = {}
+    local wagonFeatureNum = wagonFeatures[player]
+    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil then
+        allGameMessage("ERROR: There is no valid location to put this figure. Something went horribly wrong. Tell the dev.", NEUTRAL_COLOR)
+        return nil
+    end
+
+    local linkedRoadFeatures = table.shallow_copy(linkedFeatures['Road Intersection'][wagonFeatureNum])
+
+    --trim the features that are already complete
+    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
+        if featureList[linkedFeatureNum] ~= nil then
+            if table.contains(CLOISTER_FEATURES, featureList[linkedFeatureNum].nameOfFeature) then
+                local numOpenings = 8
+                for x=-1, 1 do
+                    for z=-1, 1 do
+                        if not (x == 0 and z == 0) and tileGridOccupied(featureList[linkedFeatureNum].featureLocation.x + x, featureList[linkedFeatureNum].featureLocation.z + z) then
+                            numOpenings = numOpenings - 1
+                        end
+                    end
+                end
+                if numOpenings <= 0 then
+                    linkedRoadFeatures[linkedFeatureNum] = nil
+                end
+            elseif featureList[linkedFeatureNum].numOpenings == 0 then
+                linkedRoadFeatures[linkedFeatureNum] = nil
+            end
+        else
+            linkedRoadFeatures[linkedFeatureNum] = nil
+        end
+    end
+
+    for x, tileColumn in pairs(tileGrid) do
+        for z, tileLocation in pairs(tileColumn) do
+            local positionsToVisit = {}
+            local tileData = getTileDataForTile(getObjectFromGUID(tileLocation.tile_guid))
+            local specialFeatures = tileData.specialFeatures
+            if specialFeatures ~= nil then
+                for specialFeatureNum, specialFeature in pairs(specialFeatures) do
+                    if specialFeature[3] ~= nil then
+                        table.insert(positionsToVisit, specialFeatureNum+12)
+                    end
+                end
+            end
+            for featureMapPosition=1, 12 do
+                table.insert(positionsToVisit, featureMapPosition)
+            end
+
+            for _, featureMapPosition in ipairs(positionsToVisit) do
+                local featureNum = getFeatureNumAt(x, z, featureMapPosition)
+                if linkedRoadFeatures[featureNum] ~= nil then
+                    if AnMIsValidWagonLocation(newFigure, featureNum, player, false) then
+                        setOrUpdateLocationMarker(locationMarkers, x, z, featureMapPosition, 0)
+                        linkedRoadFeatures[featureNum] = nil
+                    end
+                end
+            end
+        end
+    end
+
+    return locationMarkers
+end
+
+function AnMSetNewBarn(figure)
+    newBarn = figure.getGUID()
+end
+
+function AnMIsNewBarn(figure)
+    local isbarn = newBarn ~= nil and figure.getGUID() == newBarn
+    return isbarn
+end
+
+function AnMClearNewBarn()
+    newBarn = nil
+end
+
+--checks if this position is on a corner or 4 tiles containing nothing but fields
+--assumes that the given feature has already been checked and is a field
+--returns true if it is, false otherwise
+--NOTE: This function needs to use tileData. This is because it is the only way to tell if both feature locations in a given corner
+--do not have a city in-between them. It would seem like you could simply check if they share the same featureNum, but
+--there are a few rare tiles with fields on each side and a pointy city portion sticking between them.
+function AnMIsValidBarnLocation(closestFeatureMapPosition, xIndex, zIndex)
+    --NOTE: the following equation gives the other feature location on the same corner: ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5
+    if closestFeatureMapPosition > 12 or closestFeatureMapPosition < 5 then return false end
+    local tile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
+    local tileData = getTileDataForTile(tile)
+    local tileRotation = tileGrid[xIndex][zIndex].rotation
+    local closestTilePosition = featureMapPositionToTilePosition(closestFeatureMapPosition, tileRotation)
+    local valid = false
+    local includesLastTile = false
+    if xIndex == lastPlacedTileX and zIndex == lastPlacedTileZ then includesLastTile = true end
+    local links = tileData.linkedOctants
+    if links == nil then return false end
+    for _, link in ipairs(links) do
+        --check if both sides of the corner are linked together
+        if table.contains(link, closestTilePosition) and table.contains(link, (closestTilePosition + ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
+            -- go over both neighboring tiles
+            for i, position in ipairs({closestTilePosition, (closestTilePosition + ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5}) do
+                local newTileDirection = (3 + position + (tileRotation * 2)) % 8 + 5
+                local newX = xIndex + SIDE_DELTA[math.floor((newTileDirection - 3) / 2)].x
+                local newZ = zIndex + SIDE_DELTA[math.floor((newTileDirection - 3) / 2)].z
+                if newX == lastPlacedTileX and newZ == lastPlacedTileZ then includesLastTile = true end
+                if not tileGridOccupied(newX, newZ) then return false end
+                local newTile = getObjectFromGUID(tileGrid[newX][newZ].tile_guid)
+                local newTileData = getTileDataForTile(newTile)
+                local newTileRotation = tileGrid[newX][newZ].rotation
+                local newTilePosition = (((newTileDirection % 2) * 2) + TILE_180_ROTATION + newTileDirection - (newTileRotation * 2) - 4) % 8 + 5
+                if getTileFeatureName(newTile, newTilePosition) ~= 'Field' then return false end
+                links = newTileData.linkedOctants
+                if links == nil then return false end
+                for _, link in ipairs(links) do
+                    if table.contains(link, newTilePosition) and table.contains(link, (newTilePosition + ((newTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
+                        local lastTileDirection = (3 + ((newTilePosition + ((newTilePosition % 2) * -2) + 1 - 5) % 8 + 5) + (newTileRotation * 2)) % 8 + 5
+                        local lastX = newX + SIDE_DELTA[math.floor((lastTileDirection - 3) / 2)].x
+                        local lastZ = newZ + SIDE_DELTA[math.floor((lastTileDirection - 3) / 2)].z
+                        if lastX == lastPlacedTileX and lastZ == lastPlacedTileZ then includesLastTile = true end
+                        if not tileGridOccupied(lastX, lastZ) then return false end
+                        local lastTile = getObjectFromGUID(tileGrid[lastX][lastZ].tile_guid)
+                        local lastTileData = getTileDataForTile(lastTile)
+                        local lastTileRotation = tileGrid[lastX][lastZ].rotation
+                        local lastTilePosition = (((lastTileDirection % 2) * 2) + TILE_180_ROTATION + lastTileDirection - (lastTileRotation * 2) - 4) % 8 + 5
+                        if getTileFeatureName(lastTile, lastTilePosition) ~= 'Field' then return false end
+                        --only need to check the links once
+                        if i == 2 then
+                            --check if both sides of the corner are linked together
+                            links = lastTileData.linkedOctants
+                            if links == nil then return false end
+                            for _, link in ipairs(links) do
+                                if table.contains(link, lastTilePosition) and table.contains(link, (lastTilePosition + ((lastTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
+                                    --if it managed to get to this point, then all conditions have been met
+                                    valid = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if not includesLastTile then
+        valid = false
+    end
+    return valid
+end
+
+--Restore any saved data from AnM expansion
+function AnMLoadData(saved_data)
+    wagonFeatures = saved_data.wagonFeatures
+    newBarn = saved_data.newBarn
+end
+
+--Save data from InC expansion
+function AnMSaveData(saved_data)
+    saved_data.wagonFeatures = wagonFeatures
+    saved_data.newBarn = newBarn
+end

@@ -26,6 +26,7 @@ function onload(save_state)
         ferriesLinkedQuadrants = saved_data.ferriesLinkedQuadrants
         placedFerries = saved_data.placedFerries
         riverLoadData(saved_data)
+        AnMLoadData(saved_data)
         TnBLoadData(saved_data)
         KnRBLoadData(saved_data)
         PnDLoadData(saved_data)
@@ -55,7 +56,6 @@ function onload(save_state)
         handColor = saved_data.handColor
         player_possession_areas = saved_data.player_possession_areas
         turnState = saved_data.turnState
-        wagonFeatures = saved_data.wagonFeatures
         carcassonneFigures = saved_data.carcassonneFigures
         wofPigPosition = saved_data.wofPigPosition
         numberActiveTowers = saved_data.numberActiveTowers
@@ -63,7 +63,6 @@ function onload(save_state)
         towerZ = saved_data.towerZ
         currentMiniTurn = saved_data.currentMiniTurn
         shepherdAwaitingAction = saved_data.shepherdAwaitingAction
-        newBarn = saved_data.newBarn
         hasRansomedPrisoner = saved_data.hasRansomedPrisoner
         buriedTile = saved_data.buriedTile
         flier = saved_data.flier
@@ -182,7 +181,6 @@ function onSave()
         lastPlacedTileZ = lastPlacedTileZ,
         linkedFeatures = linkedFeatures,
         longestRoad = longestRoad,
-        newBarn = newBarn,
         numberActiveTowers = numberActiveTowers,
         placedFerries = placedFerries,
         playerPossessionScriptingZones = playerPossessionScriptingZones,
@@ -199,10 +197,10 @@ function onSave()
         towerX = towerX,
         towerZ = towerZ,
         turnState = turnState,
-        wagonFeatures = wagonFeatures,
         wofPigPosition = wofPigPosition
     }
     riverSaveData(toSave)
+    AnMSaveData(toSave)
     TnBSaveData(toSave)
     KnRBSaveData(toSave)
     PnDSaveData(toSave)

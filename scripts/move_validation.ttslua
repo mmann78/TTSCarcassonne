@@ -141,16 +141,13 @@ function checkFigurePlacement(params)
             end
         end
         if newFigure.getVar('figureName') == 'Barn' then
-            newBarn = newFigure.getGUID()
+            AnMSetNewBarn(newFigure)
         end
     elseif turnState == 'replace finished wagons' then
-        if newFigure.getVar('figureName') ~= 'Wagon' then
-            allErrorMessage({"MESSAGE_WAGON_ILLEGAL_FIGURE"}, activePlayers[currentMiniTurn])
+        if currentMiniTurn == nil then return end
+        if not AnMCheckReplaceFinishedWagons(newFigure, featureNum, activePlayers[currentMiniTurn]) then
             return
         end
-        if currentMiniTurn == nil then return end
-        if not isValidWagonLocation(newFigure, featureNum, true) then return end
-        wagonFeatures[activePlayers[currentMiniTurn]] = nil
     elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
         if flier ~= lastDroppedObject_GUID then
             allErrorMessage({"MESSAGE_FLIER_WRONG_FIGURE"}, activePlayers[currentPlayer])
@@ -558,7 +555,7 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
         return false
     end
     if newFigure.getVar('figureName') == 'Barn' then
-        if nameOfFeature ~= 'Field' or not isValidBarnLocation(featureMapPosition, xIndex, zIndex) then
+        if nameOfFeature ~= 'Field' or not AnMIsValidBarnLocation(featureMapPosition, xIndex, zIndex) then
             if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_BARN"}, activePlayers[currentPlayer]) end
             return false
         end
@@ -608,130 +605,6 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
     else
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FEATURE_ALREADY_OCCUPIED"}, activePlayers[currentPlayer]) end
     end
-    return false
-end
-
---checks if this position is on a corner or 4 tiles containing nothing but fields
---assumes that the given feature has already been checked and is a field
---returns true if it is, false otherwise
---NOTE: This function needs to use tileData. This is because it is the only way to tell if both feature locations in a given corner
---do not have a city in-between them. It would seem like you could simply check if they share the same featureNum, but
---there are a few rare tiles with fields on each side and a pointy city portion sticking between them.
-function isValidBarnLocation(closestFeatureMapPosition, xIndex, zIndex)
-    --NOTE: the following equation gives the other feature location on the same corner: ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5
-    if closestFeatureMapPosition > 12 or closestFeatureMapPosition < 5 then return false end
-    local tile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
-    local tileData = getTileDataForTile(tile)
-    local tileRotation = tileGrid[xIndex][zIndex].rotation
-    local closestTilePosition = featureMapPositionToTilePosition(closestFeatureMapPosition, tileRotation)
-    local valid = false
-    local includesLastTile = false
-    if xIndex == lastPlacedTileX and zIndex == lastPlacedTileZ then includesLastTile = true end
-    local links = tileData.linkedOctants
-    if links == nil then return false end
-    for _, link in ipairs(links) do
-        --check if both sides of the corner are linked together
-        if table.contains(link, closestTilePosition) and table.contains(link, (closestTilePosition + ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
-            -- go over both neighboring tiles
-            for i, position in ipairs({closestTilePosition, (closestTilePosition + ((closestTilePosition % 2) * -2) + 1 - 5) % 8 + 5}) do
-                local newTileDirection = (3 + position + (tileRotation * 2)) % 8 + 5
-                local newX = xIndex + SIDE_DELTA[math.floor((newTileDirection - 3) / 2)].x
-                local newZ = zIndex + SIDE_DELTA[math.floor((newTileDirection - 3) / 2)].z
-                if newX == lastPlacedTileX and newZ == lastPlacedTileZ then includesLastTile = true end
-                if not tileGridOccupied(newX, newZ) then return false end
-                local newTile = getObjectFromGUID(tileGrid[newX][newZ].tile_guid)
-                local newTileData = getTileDataForTile(newTile)
-                local newTileRotation = tileGrid[newX][newZ].rotation
-                local newTilePosition = (((newTileDirection % 2) * 2) + TILE_180_ROTATION + newTileDirection - (newTileRotation * 2) - 4) % 8 + 5
-                if getTileFeatureName(newTile, newTilePosition) ~= 'Field' then return false end
-                links = newTileData.linkedOctants
-                if links == nil then return false end
-                for _, link in ipairs(links) do
-                    if table.contains(link, newTilePosition) and table.contains(link, (newTilePosition + ((newTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
-                        local lastTileDirection = (3 + ((newTilePosition + ((newTilePosition % 2) * -2) + 1 - 5) % 8 + 5) + (newTileRotation * 2)) % 8 + 5
-                        local lastX = newX + SIDE_DELTA[math.floor((lastTileDirection - 3) / 2)].x
-                        local lastZ = newZ + SIDE_DELTA[math.floor((lastTileDirection - 3) / 2)].z
-                        if lastX == lastPlacedTileX and lastZ == lastPlacedTileZ then includesLastTile = true end
-                        if not tileGridOccupied(lastX, lastZ) then return false end
-                        local lastTile = getObjectFromGUID(tileGrid[lastX][lastZ].tile_guid)
-                        local lastTileData = getTileDataForTile(lastTile)
-                        local lastTileRotation = tileGrid[lastX][lastZ].rotation
-                        local lastTilePosition = (((lastTileDirection % 2) * 2) + TILE_180_ROTATION + lastTileDirection - (lastTileRotation * 2) - 4) % 8 + 5
-                        if getTileFeatureName(lastTile, lastTilePosition) ~= 'Field' then return false end
-                        --only need to check the links once
-                        if i == 2 then
-                            --check if both sides of the corner are linked together
-                            links = lastTileData.linkedOctants
-                            if links == nil then return false end
-                            for _, link in ipairs(links) do
-                                if table.contains(link, lastTilePosition) and table.contains(link, (lastTilePosition + ((lastTilePosition % 2) * -2) + 1 - 5) % 8 + 5) then
-                                    --if it managed to get to this point, then all conditions have been met
-                                    valid = true
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    if not includesLastTile then
-        valid = false
-    end
-    return valid
-end
-
-function isValidWagonLocation(newFigure, featureNum, verbose)
-    local nameOfFeature = featureList[featureNum].nameOfFeature
-    local numOpenings = featureList[featureNum].numOpenings
-    if nameOfFeature == 'River' then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FIGURE_ON_RIVER"}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-    if nameOfFeature == 'Carcassonne' or string.sub(nameOfFeature,1,8) == 'Quarter-' then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_COC_NOT_ALLOWED"}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-    if nameOfFeature == 'Field' then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON"}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-    if nameOfFeature == 'Road' and controlPanelSettings['BaseDisableRoads'] then
-        if verbose then allErrorMessage({"Invalid Location: Roads are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-    if nameOfFeature == 'City' and controlPanelSettings['BaseDisableCities'] then
-        if verbose then allErrorMessage({"Invalid Location: Cities are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-    if nameOfFeature == 'Cloister' and controlPanelSettings['BaseDisableCloisters'] then
-        if verbose then allErrorMessage({"Invalid Location: Cloisters are disabled via the house rules."}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-
-    local wagonFeatureNum = wagonFeatures[activePlayers[currentMiniTurn]]
-    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil or linkedFeatures['Road Intersection'][wagonFeatureNum][featureNum] ~= true then
-        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON_NOT_CONNECTED"}, activePlayers[currentMiniTurn]) end
-        return false
-    end
-
-    if numOpenings > 0 then
-        for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
-            if obj ~= newFigure and table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
-                local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
-                if tileGridOccupied(xIndex, zIndex) then
-                    local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
-                    local followerFeatureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
-                    if followerFeatureNum == featureNum then
-                        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FEATURE_ALREADY_OCCUPIED"}, activePlayers[currentMiniTurn]) end
-                        return false
-                    end
-                end
-            end
-        end
-        return true
-    end
-    if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_WAGON_ALREADY_COMPLETE"}, activePlayers[currentMiniTurn]) end
     return false
 end
 

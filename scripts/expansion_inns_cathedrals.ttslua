@@ -1,0 +1,15 @@
+--Encapsulate the behavior of the Inns and Cathedrals expansion (InC)
+
+--Scoring data specific to expansion
+function InCInitializeScoreSummary(player)
+
+
+end
+
+--Restore any saved data from InC expansion
+function InCLoadData(saved_data)
+end
+
+--Save data from InC expansion
+function InCSaveData(saved_data)
+end

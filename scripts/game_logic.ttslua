@@ -248,6 +248,7 @@ function initializeScoreSummary()
         scoreSummary[player_color]['Road'] = 0
         scoreSummary[player_color]['Field'] = 0
         scoreSummary[player_color]['Cloister'] = 0
+        InCInitializeScoreSummary(scoreSummary[player_color])
         TnBInitializeScoreSummary(scoreSummary[player_color])
         if controlPanelSettings['HnSShepherd'] then
             scoreSummary[player_color]['Shepherd'] = 0
@@ -2168,9 +2169,9 @@ function scoreFeatures()
                             if figure.getVar('figureName') == 'Pig' then hasPig[figure.getVar('owner')] = true end
                             if figure.getVar('figureName') == 'Barn' then
                                 hasBarn = true
-                                if newBarn ~= nil and figure.getGUID() == newBarn then
+                                if AnMIsNewBarn(figure) then
                                     hasNewBarn = true
-                                    newBarn = nil
+                                    AnMClearNewBarn()
                                 end
                                 --recalculate "follower count" with only barns. Technically they aren't followers but it was easier in code.
                                 if #featureFollowers == 0 then
@@ -2369,9 +2370,7 @@ function scoreFeatures()
                                             scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 3)
                                         end
                                     end
-                                    if follower.getVar('figureName') == "Wagon" then
-                                        wagonFeatures[follower.getVar('owner')] = featureNum
-                                    end
+                                    AnMSetWagonOwner(follower, featureNum)
                                     local winner = false
                                     if topWeight > 0 and followerCounts[follower.getVar('owner')] >= topWeight and score > 0 then winner = true end
                                     if winner and nameOfFeature ~= 'Field' and #traversedGoldBars > 0 then
@@ -2612,98 +2611,6 @@ function giveGold(gold, player_color)
     return rewardGold()
 end
 
-function replaceFinishedWagons()
-    while true do
-        if currentMiniTurn == nil then
-            currentMiniTurn = currentPlayer
-        else
-            currentMiniTurn = currentMiniTurn + 1
-            if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
-            if currentMiniTurn == currentPlayer then break end
-        end
-        if wagonFeatures[activePlayers[currentMiniTurn]] ~= nil then
-            if hasAvailableWagonFeature(wagonFeatures[activePlayers[currentMiniTurn]]) then
-                allGameMessage({"MESSAGE_WAGON_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-                local labelButtonParam = {
-                   index = 1, label = translate("BUTTON_LABEL_PROMPT_REPLACE_WAGON"), click_function = 'doNothing',
-                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=1.8}, width = 0, height=0, font_size = 200, function_owner = nil
-                }
-                local skipFigureButtonParam = {
-                   index = 2, label = translate("BUTTON_LABEL_SKIP_WAGON"), click_function = 'skipWagonButton',
-                   position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=2.5}, width = 1400, height=600, font_size = 200, function_owner = nil
-                }
-                createNormalizedArbitraryButton({x=-lastPlacedTileX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=lastPlacedTileZ * TILE_SPACING - MIDDLE_OFFSET.z}, labelButtonParam, true)
-                createNormalizedArbitraryButton({x=-lastPlacedTileX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=lastPlacedTileZ * TILE_SPACING - MIDDLE_OFFSET.z}, skipFigureButtonParam, true)
-                return
-            else
-                wagonFeatures[activePlayers[currentMiniTurn]] = nil
-                allGameMessage({"MESSAGE_WAGON_NO_FEATURES", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-            end
-        end
-    end
-    currentMiniTurn = nil
-    return nextState('next')
-end
-
-function hasAvailableWagonFeature(wagonFeatureNum)
-    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil then return false end
-    local linkedRoadFeatures = table.shallow_copy(linkedFeatures['Road Intersection'][wagonFeatureNum])
-
-    --trim the features that are already complete
-    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
-        if featureList[linkedFeatureNum] ~= nil then
-            if table.contains(CLOISTER_FEATURES, featureList[linkedFeatureNum].nameOfFeature) then
-                local numOpenings = 8
-                for x=-1, 1 do
-                    for z=-1, 1 do
-                        if not (x == 0 and z == 0) and tileGridOccupied(featureList[linkedFeatureNum].featureLocation.x + x, featureList[linkedFeatureNum].featureLocation.z + z) then
-                            numOpenings = numOpenings - 1
-                        end
-                    end
-                end
-                if numOpenings <= 0 then
-                    linkedRoadFeatures[linkedFeatureNum] = nil
-                end
-            elseif featureList[linkedFeatureNum].numOpenings == 0 then
-                linkedRoadFeatures[linkedFeatureNum] = nil
-            end
-        else
-            linkedRoadFeatures[linkedFeatureNum] = nil
-        end
-    end
-
-    for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
-        if table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
-            local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
-            if tileGridOccupied(xIndex, zIndex) then
-                local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
-                local featureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
-                if featureNum ~= nil then
-                    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
-                        if linkedFeatureNum == featureNum then
-                            linkedRoadFeatures[linkedFeatureNum] = nil
-                            break
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    local numberOfLinkedFeatures = 0
-    for _, _ in pairs(linkedRoadFeatures) do
-        numberOfLinkedFeatures = numberOfLinkedFeatures + 1
-    end
-    if numberOfLinkedFeatures > 0 then return true else return false end
-end
-
-function skipWagonButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        clearArbitraryButtons()
-        wagonFeatures[activePlayers[currentMiniTurn]] = nil
-        return replaceFinishedWagons()
-    end
-end
 
 --focus the camera on the currently praised figures
 --params:

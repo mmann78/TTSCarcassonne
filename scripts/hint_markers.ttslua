@@ -23,7 +23,10 @@ function showHintMarkers()
                     showFigureMarkers(pickedUpObject)
                 end
             elseif pickedUpObjectfigureName == 'Wagon' and turnState == 'replace finished wagons' then
-                showWagonFeatureMarkers(pickedUpObject)
+                local locationMarkers = AnMShowWagonFeatureMarkers(pickedUpObject, activePlayers[currentMiniTurn])
+                if locationMarkers ~= nil then
+                    showLocationMarkers(pickedUpObject, locationMarkers)
+                end
             elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
                 showFlierFeatureMarkers(pickedUpObject)
             elseif turnState == 'awaiting phantom decision' then
@@ -277,71 +280,6 @@ function showTowerMarkers(newFigure)
                 local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
                 if locationMarkers[xIndex][zIndex][closestFeatureMapPosition] ~= nil then
                     setOrUpdateLocationMarker(locationMarkers, xIndex, zIndex, closestFeatureMapPosition, 1)
-                end
-            end
-        end
-    end
-
-    showLocationMarkers(newFigure, locationMarkers)
-    return 1
-end
-
-function showWagonFeatureMarkers(newFigure)
-    local locationMarkers = {}
-    local wagonFeatureNum = wagonFeatures[activePlayers[currentMiniTurn]]
-    if linkedFeatures['Road Intersection'][wagonFeatureNum] == nil then
-        allGameMessage("ERROR: There is no valid location to put this figure. Something went horribly wrong. Tell the dev.", NEUTRAL_COLOR)
-        return
-    end
-
-    local linkedRoadFeatures = table.shallow_copy(linkedFeatures['Road Intersection'][wagonFeatureNum])
-
-    --trim the features that are already complete
-    for linkedFeatureNum, _ in pairs(linkedRoadFeatures) do
-        if featureList[linkedFeatureNum] ~= nil then
-            if table.contains(CLOISTER_FEATURES, featureList[linkedFeatureNum].nameOfFeature) then
-                local numOpenings = 8
-                for x=-1, 1 do
-                    for z=-1, 1 do
-                        if not (x == 0 and z == 0) and tileGridOccupied(featureList[linkedFeatureNum].featureLocation.x + x, featureList[linkedFeatureNum].featureLocation.z + z) then
-                            numOpenings = numOpenings - 1
-                        end
-                    end
-                end
-                if numOpenings <= 0 then
-                    linkedRoadFeatures[linkedFeatureNum] = nil
-                end
-            elseif featureList[linkedFeatureNum].numOpenings == 0 then
-                linkedRoadFeatures[linkedFeatureNum] = nil
-            end
-        else
-            linkedRoadFeatures[linkedFeatureNum] = nil
-        end
-    end
-
-    for x, tileColumn in pairs(tileGrid) do
-        for z, tileLocation in pairs(tileColumn) do
-            local positionsToVisit = {}
-            local tileData = getTileDataForTile(getObjectFromGUID(tileLocation.tile_guid))
-            local specialFeatures = tileData.specialFeatures
-            if specialFeatures ~= nil then
-                for specialFeatureNum, specialFeature in pairs(specialFeatures) do
-                    if specialFeature[3] ~= nil then
-                        table.insert(positionsToVisit, specialFeatureNum+12)
-                    end
-                end
-            end
-            for featureMapPosition=1, 12 do
-                table.insert(positionsToVisit, featureMapPosition)
-            end
-
-            for _, featureMapPosition in ipairs(positionsToVisit) do
-                local featureNum = getFeatureNumAt(x, z, featureMapPosition)
-                if linkedRoadFeatures[featureNum] ~= nil then
-                    if isValidWagonLocation(newFigure, featureNum, false) then
-                        setOrUpdateLocationMarker(locationMarkers, x, z, featureMapPosition, 0)
-                        linkedRoadFeatures[featureNum] = nil
-                    end
                 end
             end
         end

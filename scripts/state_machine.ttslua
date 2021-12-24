@@ -267,8 +267,7 @@ function playerStateHandler()
         confirmationDisplayed = false
         --ransoming a prisoner can only be done once per turn. No second ransom is allowed due to drawing an extra tile for the builder (CAR 136)
         hasRansomedPrisoner = false
-        wagonFeatures = {}
-        newBarn = nil
+        AnMBeginTurn()
         lastPlacedTileX = nil
         lastPlacedTileZ = nil
         highlightLastPlacedTiles()
@@ -502,7 +501,11 @@ function playerStateHandler()
         tempGoldCounts = getGold()
         return rewardGold()
     elseif turnState == 'replace finished wagons' then
-        return replaceFinishedWagons()
+        if AnMReplaceFinishedWagons() then
+            return nextState('next')
+        else
+            return
+        end
     elseif turnState == 'prompt moving to carcassonne' then
         clearFigureOptions()
         if not CoCPromptMovingToCarcassonne() then

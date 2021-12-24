@@ -133,7 +133,7 @@ function AIStateHandler()
         --end
     --elseif turnState == 'replace finished wagons' then
     --    gameNotification("AI not implemented for expansion: The Abbey & The Mayor", NEUTRAL_COLOR, activePlayers[currentPlayer])
-        --return replaceFinishedWagons()
+        --return AnMReplaceFinishedWagons()
     else
         return playerStateHandler()
     end
