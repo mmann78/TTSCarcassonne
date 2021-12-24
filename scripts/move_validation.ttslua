@@ -249,7 +249,7 @@ function checkFigurePlacement(params)
         return nextState('placed flier')
     else
         if turnState == 'awaiting figure decision' and (xIndex ~= lastPlacedTileX or zIndex ~= lastPlacedTileZ) then
-            hasAlreadyUsedMagicPortal = true
+            PnDSetAlreadyUsedMagicPortal(true)
         end
         return nextState('placed figure')
     end
@@ -441,10 +441,10 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
     local numOpenings = featureList[featureNum].numOpenings
     if not (
         (xIndex == lastPlacedTileX and zIndex == lastPlacedTileZ) or
-        (tileHasMagicPortal and not hasAlreadyUsedMagicPortal and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName'))) or
+        (PnDIsMagicPortalAvailable() and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName'))) or
         newFigure.getVar('figureName') == 'Barn' or nameOfFeature == 'Tower Foundation' or string.sub(nameOfFeature,1,6) == 'Crown-'
         ) then
-        if tileHasMagicPortal and hasAlreadyUsedMagicPortal and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
+        if PnDIsUsedMagicPortalOnTile() and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
             if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_MAGIC_PORTAL_USAGE_EXCEEDED"}, activePlayers[currentPlayer]) end
             return
         else
@@ -452,14 +452,8 @@ function isValidFigureLocation(newFigure, xIndex, zIndex, featureMapPosition, fe
             return
         end
     end
-    local dragon = getObjectFromGUID(dragon_GUID)
-    if controlPanelSettings['PnDDragon'] and dragon ~= nil and newFigure.getVar('figureName') ~= 'Barn' and (table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, newFigure.getVar('figureName'))) then
-        local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
-        if xIndex == dragonXIndex and
-           zIndex == dragonZIndex then
-            if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FIGURE_ON_DRAGON"}, activePlayers[currentPlayer]) end
-            return false
-        end
+    if not PnDDragonIsValidLocation(newFigure, xIndex, zIndex, activePlayers[currentPlayer]) then
+        return false
     end
     if nameOfFeature == 'River' then
         if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FIGURE_ON_RIVER"}, activePlayers[currentPlayer]) end

@@ -231,22 +231,6 @@ vipFigureSettings = {
 --figures that can be generated in code
 --[<setting name>] = {[<expansion bag>] = {[<item name>] = {width = <width of object>}}}
 neutralFigureSettings = {
-    ['PnDFairy'] = {
-        name = 'Fairy',
-        width = 1.0,
-        use_snap_points = false,
-        color = {r = 162/255, g = 1, b = 1, a = 1},
-        object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
-        custom_object_params = {type=1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507606030/3F75A6F3BEA8A6D9A91BBDF16C0882B15110C28E/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/'}
-    },
-    ['PnDDragon'] = {
-        name = 'Dragon',
-        width = 2.0,
-        use_snap_points = false,
-        color = {r = 142/255, g = 0, b = 0, a = 1},
-        object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
-        custom_object_params = {type=1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507607867/825A1C22BA586A45EEDBB7D8EECAD1EA79BFFA6A/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/', collider = 'http://cloud-3.steamusercontent.com/ugc/1014939826507610133/42E8E30834CAD76F57AFE8F8CD30A4C2C4B28740/'}
-    },
     ['FlierFlier'] = {
         width = 1.0,
         use_snap_points = false,
@@ -713,6 +697,7 @@ end
 --sets up items that do not belong to any specific player in the neutral area
 function prepareNeutralItems()
     local offset = 0
+    offset = PnDPrepareNeutralItems(offset)
     for rule_id, figureSetting in pairs(neutralFigureSettings) do
         local figureSettingCopy = table.shallow_copy(figureSetting)
         if controlPanelSettings[rule_id] then
@@ -746,11 +731,7 @@ function prepareNeutralItems()
                 while neutralItemsLock do
                    coroutine.yield(0)
                 end
-                if rule_id == 'PnDFairy' then
-                    fairy_GUID = obj.getGUID()
-                elseif rule_id == 'PnDDragon' then
-                    dragon_GUID = obj.getGUID()
-                elseif rule_id == 'FlierFlier' then
+                if rule_id == 'FlierFlier' then
                     flierDie_GUID = obj.getGUID()
                 end
             end

@@ -1,0 +1,509 @@
+--Encapsulate the behavior of the Princess and the Dragon expansion (PnD)
+
+local fairy_GUID = nil
+local dragon_GUID = nil
+local dragonHasAwaken = false
+local dragonIllegalTiles = {}
+local seducedKnights = {}
+local dragonMovesRemaining = 6
+local tileHasMagicPortal = false
+local hasAlreadyUsedMagicPortal = false
+
+local PnDFairy = {
+    name = 'Fairy',
+    width = 1.0,
+    use_snap_points = false,
+    color = {r = 162/255, g = 1, b = 1, a = 1},
+    object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
+    custom_object_params = {type=1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507606030/3F75A6F3BEA8A6D9A91BBDF16C0882B15110C28E/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/'}
+}
+
+local PnDDragon = {
+    name = 'Dragon',
+    width = 2.0,
+    use_snap_points = false,
+    color = {r = 142/255, g = 0, b = 0, a = 1},
+    object_params = {type = 'Custom_model', scale = {0.5, 0.5, 0.5}},
+    custom_object_params = {type=1, material = 1, specular_intensity = 0.05, mesh = 'http://cloud-3.steamusercontent.com/ugc/1014939826507607867/825A1C22BA586A45EEDBB7D8EECAD1EA79BFFA6A/', diffuse = 'http://cloud-3.steamusercontent.com/ugc/1014939826507578447/525851AB9D9905C66770E742F1F7280B44A44BC5/', collider = 'http://cloud-3.steamusercontent.com/ugc/1014939826507610133/42E8E30834CAD76F57AFE8F8CD30A4C2C4B28740/'}
+}
+
+--Scoring data specific to expansion
+function PnDInitializeScoreSummary(player)
+    if controlPanelSettings['PnDFairy'] then
+        player['Fairy'] = 0
+    end
+end
+
+function PnDPrepareNeutralItems(offset)
+    if controlPanelSettings['PnDFairy'] then
+        fairy_GUID, offset = prepareNeutralItemHelper(PnDFairy, offset)
+    end
+    if controlPanelSettings['PnDDragon'] then
+        dragon_GUID, offset = prepareNeutralItemHelper(PnDDragon, offset)
+    end
+
+    return offset
+end
+
+--Find any followers that are on the same tile as the fairy
+--returns a table of gameobjects
+function PnDFairyEligibleFollowers()
+    local eligibleFollowers = {}
+    local fairy = getObjectFromGUID(fairy_GUID)
+    if fairy ~= nil then
+        local fairyXIndex, fairyZIndex, _, _ = getFigureTileLocation(fairy)
+        if tileGridOccupied(fairyXIndex, fairyZIndex) then
+            local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
+            for _, follower in ipairs(objs) do
+                if table.contains(FOLLOWER_TYPES, follower.getVar('figureName')) then
+                    local followerXIndex, followerZIndex, _, _ = getFigureTileLocation(follower)
+                    if fairyXIndex == followerXIndex and
+                     fairyZIndex == followerZIndex then
+                        table.insert(eligibleFollowers, follower)
+                    end
+                end
+            end
+        end
+    end
+    return eligibleFollowers
+end
+
+function PnDFairyReward()
+    local eligibleFollowers = PnDFairyEligibleFollowers()
+    for _, eligibleFollower in ipairs(eligibleFollowers) do
+        if eligibleFollower ~= nil and eligibleFollower.getVar('owner') == activePlayers[currentPlayer] then
+            local tileStack = getObjectFromGUID(tileStack_GUID)
+            if tileStack == nil and finalTile_GUID == nil then
+                allGameMessage({"MESSAGE_FAIRY_WARNING_NO_TILESTACK"}, NEUTRAL_COLOR)
+            else
+                allGameMessage({"MESSAGE_SCORE_FAIRY_IDLE", {'{p1}', getPlayerOwnerName(eligibleFollower.getVar('owner'))}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
+                scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 1)
+            end
+        end
+    end
+end
+
+function PnDCheckTile(forbiddenZones)
+    if controlPanelSettings['PnDDragon'] then
+        table.insert(forbiddenZones, dragon_GUID)
+    end
+    if controlPanelSettings['PnDFairy'] then
+        table.insert(forbiddenZones, fairy_GUID)
+    end
+end
+
+function PnDFairyHighlight()
+    local fairy = getObjectFromGUID(fairy_GUID)
+    if controlPanelSettings['PnDFairy'] and fairy ~= nil then
+        fairy.setLock(false)
+        fairy.highlightOn({1,1,1})
+    end
+end
+
+function PnDFairyClear()
+    local fairy = getObjectFromGUID(fairy_GUID)
+    if controlPanelSettings['PnDFairy'] and fairy ~= nil then
+        fairy.setLock(true)
+        fairy.highlightOff()
+    end
+end
+
+function PnDFairyShowHighlights(newFigure)
+    highlightedTiles = {}
+    local hasFairyLocation = false
+    local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
+    for _, obj in ipairs(objs) do
+        if obj.getVar('owner') == activePlayers[currentPlayer] and table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
+            local xIndex, zIndex, _, _ = getFigureTileLocation(obj)
+            if tileGridOccupied(xIndex, zIndex) then
+                if highlightedTiles[xIndex] == nil then highlightedTiles[xIndex] = {} end
+                highlightedTiles[xIndex][zIndex] = true
+                getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid).highlightOn(player_color_tints[activePlayers[currentPlayer]])
+                hasFairyLocation = true
+            end
+        end
+    end
+    if not hasFairyLocation then
+        allGameMessage(({"MESSAGE_HINTS_NO_FAIRY_LOCATION"}), NEUTRAL_COLOR)
+    end
+    return 1
+end
+
+
+function PnDDragonIsValidLocation(newFigure, xIndex, zIndex, player)
+    local dragon = getObjectFromGUID(dragon_GUID)
+    if controlPanelSettings['PnDDragon'] and dragon ~= nil and newFigure.getVar('figureName') ~= 'Barn' and (table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, newFigure.getVar('figureName'))) then
+        local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
+        if xIndex == dragonXIndex and zIndex == dragonZIndex then
+            if verbose then
+                allErrorMessage({"MESSAGE_INVALID_LOCATION_FIGURE_ON_DRAGON"}, player)
+            end
+            return false
+        end
+    end
+
+    return true
+end
+
+function PnDDragonLock()
+    if dragon_GUID ~= nil then
+        getObjectFromGUID(dragon_GUID).setLock(true)
+    end
+end
+
+function PnDIsDragonMovesRemaining()
+    local movesRemaining = dragonMovesRemaining > 0
+    return movesRemaining
+end
+
+function PnDIsDragonOnTile(XIndex, ZIndex)
+    local dragon = getObjectFromGUID(dragon_GUID)
+    if controlPanelSettings['PnDDragon'] and dragon ~= nil then
+        local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
+        if XIndex == dragonXIndex and ZIndex == dragonZIndex then
+            return true
+        end
+    end
+    return false
+end
+
+function PnDIsDragonAwake(specialFeatures)
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Dragon" and dragonHasAwaken then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+
+function PnDMoveDragonToTile(xIndex, zIndex)
+    local dragon = getObjectFromGUID(dragon_GUID)
+    local xDestination = (xIndex * TILE_SPACING) - MIDDLE_OFFSET.x
+    local zDestination = (zIndex * TILE_SPACING) - MIDDLE_OFFSET.z
+
+    local dragonTravelAngle = math.deg(math.atan2(dragon.getPosition().x - xDestination, dragon.getPosition().z - zDestination)) + 90
+    if dragonTravelAngle > 360 then dragonTravelAngle = dragonTravelAngle - 360 end
+    dragon.setLock(false)
+    dragon.setRotationSmooth({0, dragonTravelAngle, 0})
+    dragon.setPositionSmooth({xDestination, 1.5, zDestination})
+    local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
+    for _, object in ipairs(objs) do
+        if object.getVar('figureName') ~= 'Barn' and (table.contains(FOLLOWER_TYPES, object.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, object.getVar('figureName')) or table.contains(SHEEP_TOKEN_TYPES, object.getVar('tokenName'))) then
+            local objectXIndex, objectZIndex, xPosition, zPosition = getFigureTileLocation(object)
+            if xIndex == objectXIndex and
+               zIndex == objectZIndex then
+               if table.contains(SHEEP_TOKEN_TYPES, object.getVar('tokenName')) then
+                   local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
+                   if sheepTileBag ~= nil then
+                       allGameMessage({"MESSAGE_DRAGON_SHEEP_EAT_MESSAGE", {'{n1}', object.getDescription()}, {'{f1}', object.getName()}}, NEUTRAL_COLOR)
+                       sheepTileBag.putObject(object)
+                   else
+                       allErrorMessage({"MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG"})
+                   end
+               else
+                    local tile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
+                    local closestTilePosition = findClosestTilePosition(xIndex, zIndex, xPosition, zPosition)
+                    local nameOfFeature = getTileFeatureName(tile, closestTilePosition)
+                    if string.sub(nameOfFeature,1,8) ~= 'Quarter-' and nameOfFeature ~= 'Carcassonne' and string.sub(nameOfFeature,1,6) ~= 'Crown-' then
+                        --an assumption is made here that there won't be more than 1 figure on the same tile that the figures are dependent on.
+                        --It is possible for more than 1 figure from the same player to be on the same tile through use of the magic portal, but not on the same feature.
+                        --Therefore, I think the assumption is safe unless there is interference from the players
+                        table.insert(removedFigures, {guid=object.getGUID(), winner=false})
+                        allGameMessage({"MESSAGE_DRAGON_FIGURE_EAT_MESSAGE", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, NEUTRAL_COLOR)
+                        removeDependentFigures(object)
+                    else
+                        allGameMessage({"MESSAGE_DRAGON_COC_PROTECTION", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function PnDMoveDragonDirection(i)
+    clearArbitraryButtons()
+
+    local dragon = getObjectFromGUID(dragon_GUID)
+    local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
+
+    local xIndex = dragonXIndex + SIDE_DELTA[i].x
+    local zIndex = dragonZIndex + SIDE_DELTA[i].z
+
+    dragonMovesRemaining = dragonMovesRemaining - 1
+    currentMiniTurn = currentMiniTurn + 1
+    table.insert(dragonIllegalTiles, {xIndex, zIndex})
+    getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid).highlightOn({1,0,0})
+
+    PnDMoveDragonToTile(xIndex, zIndex)
+    if #removedFigures > 0 then
+        returnFigures()
+    else
+        nextState('dragon moved')
+    end
+end
+
+local function PnDMoveDragonDownButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        PnDMoveDragonDirection(1)
+    end
+end
+
+local function PnDMoveDragonLeftButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        PnDMoveDragonDirection(2)
+    end
+end
+
+local function PnDMoveDragonUpButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        PnDMoveDragonDirection(3)
+    end
+end
+
+local function PnDMoveDragonRightButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        PnDMoveDragonDirection(4)
+    end
+end
+
+function PnDCreateDragonButtons()
+    local dragon = getObjectFromGUID(dragon_GUID)
+    local xIndex, zIndex, _, _ = getFigureTileLocation(dragon)
+    local hasValidMove = false
+    for i=1, 4 do
+        local newX = xIndex + SIDE_DELTA[i].x
+        local newZ = zIndex + SIDE_DELTA[i].z
+        if tileGridOccupied(newX, newZ) and not table.contains(dragonIllegalTiles, {newX, newZ}) then
+            hasValidMove = true
+            local label
+            local click_function
+            local font_size = 200
+            if i == 1 then
+                label = 'V'
+                click_function = 'PnDMoveDragonDownButton'
+                font_size = 120
+            elseif i == 2 then
+                label = '<'
+                click_function = 'PnDMoveDragonLeftButton'
+            elseif i == 3 then
+                label = '^'
+                click_function = 'PnDMoveDragonUpButton'
+            elseif i == 4 then
+                label = '>'
+                click_function = 'PnDMoveDragonRightButton'
+            end
+            local moveDragonButtonParam = {
+               index = i, label = label, click_function = click_function,
+               position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=0}, width = 800, height=600, font_size = font_size, function_owner = nil
+            }
+            createNormalizedArbitraryButton({x=-newX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=newZ * TILE_SPACING - MIDDLE_OFFSET.z}, moveDragonButtonParam, false)
+        end
+    end
+
+    if hasValidMove then
+        allGameMessage({"MESSAGE_DRAGON_MOVES_REMAINING", {'{n1}', dragonMovesRemaining}, {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+        return true
+    else
+        allGameMessage({"MESSAGE_DRAGON_STUCK"}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
+        return false
+    end
+end
+
+function PnDHighlightIllegalDragonTiles(on)
+    for _, tileCoords in ipairs(dragonIllegalTiles) do
+        if on then
+            getObjectFromGUID(tileGrid[tileCoords[1]][tileCoords[2]].tile_guid).highlightOn({1,0,0})
+        else
+            getObjectFromGUID(tileGrid[tileCoords[1]][tileCoords[2]].tile_guid).highlightOff()
+        end
+    end
+end
+
+function PnDCheckTileForDragon(xIndex, zIndex)
+    if not controlPanelSettings['PnDDragon'] then return false end
+
+    local newTile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
+    local newTileData = getTileDataForTile(newTile)
+    if PnDIsDragonAwake(newTileData.specialFeatures) then
+        dragonMovesRemaining = 6
+        dragonIllegalTiles = {}
+        currentMiniTurn = currentPlayer
+        local forbiddenZones = {}
+        PnDCheckTile(forbiddenZones)
+        CoCCheckTileForDragon(forbiddenZones)
+        if controlPanelSettings['StartingTileWoF'] then
+            table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[6].guid)
+            table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[7].guid)
+            table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[10].guid)
+            table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[11].guid)
+        end
+        for _, forbiddenZone_GUID in ipairs(forbiddenZones) do
+            forbiddenZone = getObjectFromGUID(forbiddenZone_GUID)
+            if forbiddenZone ~= nil then
+                local xIllegalIndex, zIllegalIndex, _, _ = getFigureTileLocation(forbiddenZone)
+                if tileGridOccupied(xIllegalIndex, zIllegalIndex) then
+                    table.insert(dragonIllegalTiles, {xIllegalIndex, zIllegalIndex})
+                end
+            end
+        end
+        allGameMessage({"MESSAGE_DRAGON_MOVING"}, NEUTRAL_COLOR)
+        return true
+    end
+
+    allGameMessage({"MESSAGE_DRAGON_TILE_PLAYED_BEFORE_AWAKENED"}, NEUTRAL_COLOR)
+    return false
+end
+
+-- return 0 for next state, 1 for returning figures, 2 for dragoning moving
+function PnDCheckTileForVolcano(xIndex, zIndex)
+
+    --Requires dragon to be configured
+    if not controlPanelSettings['PnDDragon'] then
+        return 0
+    end
+
+    local newTile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
+    local newTileData = getTileDataForTile(newTile)
+    local specialFeatures = newTileData.specialFeatures
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Volcano" then
+                if not dragonHasAwaken then
+                    dragonHasAwaken = true
+                    gameNotification({"MESSAGE_DRAGON_AWAKENED"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+                end
+                PnDMoveDragonToTile(xIndex, zIndex)
+                if #removedFigures > 0 then
+                    return 1
+                else
+                    return 2
+                end
+            end
+        end
+    end
+    return 0
+end
+
+
+function PnDCheckTileForPrincess(xIndex, zIndex)
+    --Must have princess configured
+    if not controlPanelSettings['PnDPrincess'] then return end
+
+    local newTile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
+    local newTileData = getTileDataForTile(newTile)
+    local tileRotation = tileGrid[xIndex][zIndex].rotation
+    local specialFeatures = newTileData.specialFeatures --Note: though I strive to not use tile data after it has been added to the feature map, an exception needs to be made here
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Princess" then
+                getActiveFigures()
+                for _, tilePosition in ipairs(specialFeature[2]) do
+                    local featureMapPosition = tilePositionToFeatureMapPosition(tilePosition, tileRotation)
+                    local featureNum = getFeatureNumAt(xIndex, zIndex, featureMapPosition)
+                    if activeFigures[featureNum] ~= nil then
+                        for _, obj in ipairs(activeFigures[featureNum].followers) do
+                            table.insert(seducedKnights, obj.getGUID())
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function PnDClearAddedTileFeature()
+    tileHasMagicPortal = false
+    PnDClearSeducedKnights()
+end
+
+function PnDIsMagicPortalAvailable()
+    local available = tileHasMagicPortal and not hasAlreadyUsedMagicPortal
+    return available
+end
+
+function PnDIsUsedMagicPortalOnTile()
+    local used = tileHasMagicPortal and hasAlreadyUsedMagicPortal
+    return used
+end
+
+function PnDSetAlreadyUsedMagicPortal(set)
+    hasAlreadyUsedMagicPortal = set
+end
+
+function PnDCheckTileForMagicPortal(xIndex, zIndex)
+    if controlPanelSettings['PnDMagicPortal'] then
+        local tileData = getTileDataForTile(getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid))
+        local specialFeatures = tileData.specialFeatures
+        if specialFeatures ~= nil then
+            for _, specialFeature in ipairs(specialFeatures) do
+                if specialFeature[1] == 'Magic Portal' then
+                    tileHasMagicPortal = true
+                end
+            end
+        end
+    end
+end
+
+function PnDClearSeducedKnights()
+    seducedKnights = {}
+end
+
+function PnDDisplaySeducedKnightsButton()
+    for _, knight in ipairs(seducedKnights) do
+        local seduceKnightButtonParam = {
+           index = 1, label = translate("BUTTON_LABEL_SEDUCE_KNIGHT"), click_function = 'PnDSeduceKnightButton',
+           position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1700, height=600, font_size = 200, function_owner = nil
+        }
+        createNormalizedButton(getObjectFromGUID(knight), seduceKnightButtonParam, true)
+    end
+end
+
+function PnDSeduceKnightButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        --although we later remove these buttons, there is a slight delay during the figure removal, so we remove them now
+        clearArbitraryButtons()
+
+        table.insert(removedFigures, {guid=object.getGUID(), winner=false})
+        if object.getVar('figureName') == 'Wagon' then
+            allGameMessage({"MESSAGE_PRINCESS_SEDUCTION_WAGON", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
+        else
+            allGameMessage({"MESSAGE_PRINCESS_SEDUCTION", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
+        end
+        removeDependentFigures(object)
+        return nextState('seduce knight')
+    end
+end
+
+function PnDClearSeducedKnightsButtons()
+    for _, knight in ipairs(seducedKnights) do
+        getObjectFromGUID(knight).clearButtons()
+    end
+end
+
+--Restore any saved data from PnD expansion
+function PnDLoadData(saved_data)
+    fairy_GUID = saved_data.fairy_GUID
+    dragon_GUID = saved_data.dragon_GUID
+    dragonHasAwaken = saved_data.dragonHasAwaken
+    dragonMovesRemaining = saved_data.dragonMovesRemaining
+    dragonIllegalTiles = saved_data.dragonIllegalTiles
+    tileHasMagicPortal = saved_data.tileHasMagicPortal
+    hasAlreadyUsedMagicPortal = saved_data.hasAlreadyUsedMagicPortal
+    seducedKnights = saved_data.seducedKnights
+end
+
+--Save data from PnD expansion
+function PnDSaveData(saved_data)
+    saved_data.fairy_GUID = fairy_GUID
+    saved_data.dragon_GUID = dragon_GUID
+    saved_data.dragonHasAwaken = dragonHasAwaken
+    saved_data.dragonMovesRemaining = dragonMovesRemaining
+    saved_data.dragonIllegalTiles = dragonIllegalTiles
+    saved_data.tileHasMagicPortal = tileHasMagicPortal
+    saved_data.hasAlreadyUsedMagicPortal = hasAlreadyUsedMagicPortal
+    saved_data.seducedKnights = seducedKnights
+end

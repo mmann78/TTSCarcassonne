@@ -310,18 +310,11 @@ turnState = "pre-game"
 currentMiniTurn = nil --used when the player order must be iterated within someone's turn
 
 buriedTile = nil
-dragonHasAwaken = false
-dragonMovesRemaining = 6
-dragonIllegalTiles = {}
-tileHasVolcano = false
-tileHasMagicPortal = false
-hasAlreadyUsedMagicPortal = false
 flier = nil
 flierOffset = nil
 flierDirection = nil
 hasAlreadyUsedFlier = false
 hasRansomedPrisoner = false
-seducedKnights = {}
 carcassonneFigures = nil
 earnedPointsThisTile = {}
 removedFigures = {}
@@ -340,8 +333,6 @@ tileInPlay = true
 finalTile_GUID = nil
 
 --The following neutral figures need to be tracked runtime
-fairy_GUID = nil
-dragon_GUID = nil
 flierDie_GUID = nil
 
 --debugLogTabIndex = -1
@@ -519,6 +510,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\scripts\expansion_traders_builders
 
 #include !\TTSCarcassonne\scripts\expansion_count_king_robber
+
+#include !\TTSCarcassonne\scripts\expansion_princess_dragon
 
 #include !\TTSCarcassonne\scripts\state_machine
 

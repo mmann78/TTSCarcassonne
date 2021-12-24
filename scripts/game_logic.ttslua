@@ -252,9 +252,7 @@ function initializeScoreSummary()
         if controlPanelSettings['HnSShepherd'] then
             scoreSummary[player_color]['Shepherd'] = 0
         end
-        if controlPanelSettings['PnDFairy'] then
-            scoreSummary[player_color]['Fairy'] = 0
-        end
+        PnDInitializeScoreSummary(scoreSummary[player_color])
         KnRBInitializeScoreSummary(scoreSummary[player_color])
         if controlPanelSettings['GoldminesGold'] then
             scoreSummary[player_color]['Gold'] = 0
@@ -805,236 +803,6 @@ function rewardCrownSpaces()
     return nextState('next')
 end
 
-function checkTileForVolcano()
-    local newTile = getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid)
-    local newTileData = getTileDataForTile(newTile)
-    local specialFeatures = newTileData.specialFeatures
-    if specialFeatures ~= nil then
-        for _, specialFeature in ipairs(specialFeatures) do
-            if controlPanelSettings['PnDDragon'] and specialFeature[1] == "Volcano" then
-                tileHasVolcano = true
-                if not dragonHasAwaken then
-                    dragonHasAwaken = true
-                    gameNotification({"MESSAGE_DRAGON_AWAKENED"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-                end
-                return moveDragonToTile(lastPlacedTileX, lastPlacedTileZ)
-            end
-        end
-    end
-    return nextState('next')
-end
-
-function checkTileForDragon()
-    local newTile = getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid)
-    local newTileData = getTileDataForTile(newTile)
-    local specialFeatures = newTileData.specialFeatures
-    if specialFeatures ~= nil then
-        for _, specialFeature in ipairs(specialFeatures) do
-            if controlPanelSettings['PnDDragon'] and specialFeature[1] == "Dragon" then
-                if dragonHasAwaken then
-                    dragonMovesRemaining = 6
-                    dragonIllegalTiles = {}
-                    currentMiniTurn = currentPlayer
-                    local forbiddenZones = {dragon_GUID}
-                    if controlPanelSettings['PnDFairy'] then
-                        table.insert(forbiddenZones, fairy_GUID)
-                    end
-                    CoCCheckTileForDragon(forbiddenZones)
-                    if controlPanelSettings['StartingTileWoF'] then
-                        table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[6].guid)
-                        table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[7].guid)
-                        table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[10].guid)
-                        table.insert(forbiddenZones, EXPANSION_BAGS['WoF'].contents['WoFStartingTiles'].contents[11].guid)
-                    end
-                    for _, forbiddenZone_GUID in ipairs(forbiddenZones) do
-                        forbiddenZone = getObjectFromGUID(forbiddenZone_GUID)
-                        if forbiddenZone ~= nil then
-                            local xIndex, zIndex, _, _ = getFigureTileLocation(forbiddenZone)
-                            if tileGridOccupied(xIndex, zIndex) then
-                                table.insert(dragonIllegalTiles, {xIndex, zIndex})
-                            end
-                        end
-                    end
-                    allGameMessage({"MESSAGE_DRAGON_MOVING"}, NEUTRAL_COLOR)
-                    return nextState('has dragon')
-                else
-                    allGameMessage({"MESSAGE_DRAGON_TILE_PLAYED_BEFORE_AWAKENED"}, NEUTRAL_COLOR)
-                end
-            end
-        end
-    end
-    return nextState('no dragon')
-end
-
-function createDragonButtons()
-    local dragon = getObjectFromGUID(dragon_GUID)
-    local xIndex, zIndex, _, _ = getFigureTileLocation(dragon)
-    local hasValidMove = false
-    for i=1, 4 do
-        local newX = xIndex + SIDE_DELTA[i].x
-        local newZ = zIndex + SIDE_DELTA[i].z
-        if tileGridOccupied(newX, newZ) and not table.contains(dragonIllegalTiles, {newX, newZ}) then
-            hasValidMove = true
-            local label
-            local click_function
-            local font_size = 200
-            if i == 1 then
-                label = 'V'
-                click_function = 'moveDragonDownButton'
-                font_size = 120
-            elseif i == 2 then
-                label = '<'
-                click_function = 'moveDragonLeftButton'
-            elseif i == 3 then
-                label = '^'
-                click_function = 'moveDragonUpButton'
-            elseif i == 4 then
-                label = '>'
-                click_function = 'moveDragonRightButton'
-            end
-            local moveDragonButtonParam = {
-               index = i, label = label, click_function = click_function,
-               position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=0}, width = 800, height=600, font_size = font_size, function_owner = nil
-            }
-            createNormalizedArbitraryButton({x=-newX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=newZ * TILE_SPACING - MIDDLE_OFFSET.z}, moveDragonButtonParam, false)
-        end
-    end
-
-    if hasValidMove then
-        allGameMessage({"MESSAGE_DRAGON_MOVES_REMAINING", {'{n1}', dragonMovesRemaining}, {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-    else
-        allGameMessage({"MESSAGE_DRAGON_STUCK"}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-        return nextState('next')
-    end
-end
-
-function moveDragonDownButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        moveDragonDirection(1)
-    end
-end
-
-function moveDragonLeftButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        moveDragonDirection(2)
-    end
-end
-
-function moveDragonUpButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        moveDragonDirection(3)
-    end
-end
-
-function moveDragonRightButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        moveDragonDirection(4)
-    end
-end
-
-function moveDragonDirection(i)
-    clearArbitraryButtons()
-
-    local dragon = getObjectFromGUID(dragon_GUID)
-    local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
-
-    local xIndex = dragonXIndex + SIDE_DELTA[i].x
-    local zIndex = dragonZIndex + SIDE_DELTA[i].z
-
-    dragonMovesRemaining = dragonMovesRemaining - 1
-    currentMiniTurn = currentMiniTurn + 1
-    table.insert(dragonIllegalTiles, {xIndex, zIndex})
-    getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid).highlightOn({1,0,0})
-
-    moveDragonToTile(xIndex, zIndex)
-end
-
-function moveDragonToTile(xIndex, zIndex)
-    local dragon = getObjectFromGUID(dragon_GUID)
-    local xDestination = (xIndex * TILE_SPACING) - MIDDLE_OFFSET.x
-    local zDestination = (zIndex * TILE_SPACING) - MIDDLE_OFFSET.z
-
-    local dragonTravelAngle = math.deg(math.atan2(dragon.getPosition().x - xDestination, dragon.getPosition().z - zDestination)) + 90
-    if dragonTravelAngle > 360 then dragonTravelAngle = dragonTravelAngle - 360 end
-    dragon.setLock(false)
-    dragon.setRotationSmooth({0, dragonTravelAngle, 0})
-    dragon.setPositionSmooth({xDestination, 1.5, zDestination})
-    local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
-    for _, object in ipairs(objs) do
-        if object.getVar('figureName') ~= 'Barn' and (table.contains(FOLLOWER_TYPES, object.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, object.getVar('figureName')) or table.contains(SHEEP_TOKEN_TYPES, object.getVar('tokenName'))) then
-            local objectXIndex, objectZIndex, xPosition, zPosition = getFigureTileLocation(object)
-            if xIndex == objectXIndex and
-               zIndex == objectZIndex then
-               if table.contains(SHEEP_TOKEN_TYPES, object.getVar('tokenName')) then
-                   local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
-                   if sheepTileBag ~= nil then
-                       allGameMessage({"MESSAGE_DRAGON_SHEEP_EAT_MESSAGE", {'{n1}', object.getDescription()}, {'{f1}', object.getName()}}, NEUTRAL_COLOR)
-                       sheepTileBag.putObject(object)
-                   else
-                       allErrorMessage({"MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG"})
-                   end
-               else
-                    local tile = getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid)
-                    local closestTilePosition = findClosestTilePosition(xIndex, zIndex, xPosition, zPosition)
-                    local nameOfFeature = getTileFeatureName(tile, closestTilePosition)
-                    if string.sub(nameOfFeature,1,8) ~= 'Quarter-' and nameOfFeature ~= 'Carcassonne' and string.sub(nameOfFeature,1,6) ~= 'Crown-' then
-                        --an assumption is made here that there won't be more than 1 figure on the same tile that the figures are dependent on.
-                        --It is possible for more than 1 figure from the same player to be on the same tile through use of the magic portal, but not on the same feature.
-                        --Therefore, I think the assumption is safe unless there is interference from the players
-                        table.insert(removedFigures, {guid=object.getGUID(), winner=false})
-                        allGameMessage({"MESSAGE_DRAGON_FIGURE_EAT_MESSAGE", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, NEUTRAL_COLOR)
-                        removeDependentFigures(object)
-                    else
-                        allGameMessage({"MESSAGE_DRAGON_COC_PROTECTION", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
-                    end
-                end
-            end
-        end
-    end
-    if #removedFigures > 0 then
-        returnFigures()
-    else
-        nextState('dragon moved')
-    end
-end
-
-function checkTileForPrincess()
-    local newTile = getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid)
-    local newTileData = getTileDataForTile(newTile)
-    local tileRotation = tileGrid[lastPlacedTileX][lastPlacedTileZ].rotation
-    local specialFeatures = newTileData.specialFeatures --Note: though I strive to not use tile data after it has been added to the feature map, an exception needs to be made here
-    if controlPanelSettings['PnDPrincess'] and specialFeatures ~= nil then
-        for _, specialFeature in ipairs(specialFeatures) do
-            if specialFeature[1] == "Princess" then
-                getActiveFigures()
-                for _, tilePosition in ipairs(specialFeature[2]) do
-                    local featureMapPosition = tilePositionToFeatureMapPosition(tilePosition, tileRotation)
-                    local featureNum = getFeatureNumAt(lastPlacedTileX, lastPlacedTileZ, featureMapPosition)
-                    if activeFigures[featureNum] ~= nil then
-                        for _, obj in ipairs(activeFigures[featureNum].followers) do
-                            table.insert(seducedKnights, obj.getGUID())
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
-function checkTileForMagicPortal()
-    if controlPanelSettings['PnDMagicPortal'] then
-        local tileData = getTileDataForTile(getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid))
-        local specialFeatures = tileData.specialFeatures
-        if specialFeatures ~= nil then
-            for _, specialFeature in ipairs(specialFeatures) do
-                if specialFeature[1] == 'Magic Portal' then
-                    tileHasMagicPortal = true
-                end
-            end
-        end
-    end
-end
-
 function checkTileForLake(tile)
     if controlPanelSettings['FerriesTiles'] and controlPanelSettings['FerriesFerries'] then
         local tileData = getTileDataForTile(getObjectFromGUID(tile.tile_guid))
@@ -1499,13 +1267,7 @@ function displayFigureButtons()
        position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=2.5}, width = 1400, height=600, font_size = 200, function_owner = nil
     }
     createNormalizedArbitraryButton({x=-lastPlacedTileX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=lastPlacedTileZ * TILE_SPACING - MIDDLE_OFFSET.z}, skipFigureButtonParam, true)
-    for _, knight in ipairs(seducedKnights) do
-        local seduceKnightButtonParam = {
-           index = 1, label = translate("BUTTON_LABEL_SEDUCE_KNIGHT"), click_function = 'seduceKnightButton',
-           position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1700, height=600, font_size = 200, function_owner = nil
-        }
-        createNormalizedButton(getObjectFromGUID(knight), seduceKnightButtonParam, true)
-    end
+    PnDDisplaySeducedKnightsButton()
     for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
         if obj.getVar('figureName') == 'Abbot' and obj.getVar('owner') == activePlayers[currentPlayer] then
             local xIndex, zIndex, _, _ = getFigureTileLocation(obj)
@@ -1614,22 +1376,6 @@ function skipFigureButton(object, sPlayer)
         else
             return nextState('skip figure')
         end
-    end
-end
-
-function seduceKnightButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        --although we later remove these buttons, there is a slight delay during the figure removal, so we remove them now
-        clearArbitraryButtons()
-
-        table.insert(removedFigures, {guid=object.getGUID(), winner=false})
-        if object.getVar('figureName') == 'Wagon' then
-            allGameMessage({"MESSAGE_PRINCESS_SEDUCTION_WAGON", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
-        else
-            allGameMessage({"MESSAGE_PRINCESS_SEDUCTION", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
-        end
-        removeDependentFigures(object)
-        return nextState('seduce knight')
     end
 end
 
@@ -1895,11 +1641,7 @@ function clearFigureOptions()
             possibleTile.highlightOff()
         end
     end
-    local fairy = getObjectFromGUID(fairy_GUID)
-    if controlPanelSettings['PnDFairy'] and fairy ~= nil then
-        fairy.setLock(true)
-        fairy.highlightOff()
-    end
+    PnDFairyClear()
 end
 
 function clearArbitraryButtons(alsoClearHighlights)
@@ -1935,9 +1677,7 @@ function clearArbitraryButtons(alsoClearHighlights)
     if currentPlayerAbbot ~= nil then
         getObjectFromGUID(currentPlayerAbbot).clearButtons()
     end
-    for _, knight in ipairs(seducedKnights) do
-        getObjectFromGUID(knight).clearButtons()
-    end
+    PnDClearSeducedKnightsButtons()
     if shepherdAwaitingAction ~= nil then
         local shepherd = getObjectFromGUID(shepherdAwaitingAction)
         shepherd.clearButtons()
@@ -2299,15 +2039,10 @@ end
 
 function checkFlierDestination()
     if tileGridOccupied(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
-        local dragon = getObjectFromGUID(dragon_GUID)
-        if controlPanelSettings['PnDDragon'] and dragon ~= nil then
-            local dragonXIndex, dragonZIndex, _, _ = getFigureTileLocation(dragon)
-            if lastPlacedTileX + flierOffset.x == dragonXIndex and
-               lastPlacedTileZ + flierOffset.z == dragonZIndex then
-                allGameMessage({"MESSAGE_FLIER_LANDED_ON_DRAGON"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-                table.insert(removedFigures, {guid=flier, winner=false})
-                return nextState('feature unavailable')
-            end
+        if PnDIsDragonOnTile(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
+            allGameMessage({"MESSAGE_FLIER_LANDED_ON_DRAGON"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+            table.insert(removedFigures, {guid=flier, winner=false})
+            return nextState('feature unavailable')
         end
         resetTraversal()
         local destinationTile = getObjectFromGUID(tileGrid[lastPlacedTileX + flierOffset.x][lastPlacedTileZ + flierOffset.z].tile_guid)
@@ -2627,7 +2362,7 @@ function scoreFeatures()
                                 --The following is only used to check for traversedGoldBars
                                 getFeatureComponents(xIndex, zIndex, closestTilePosition, 2, true)
                                 for _, follower in ipairs(featureFollowers) do
-                                    local eligibleFollowers = fairyEligibleFollowers()
+                                    local eligibleFollowers = PnDFairyEligibleFollowers()
                                     for _, eligibleFollower in ipairs(eligibleFollowers) do
                                         if eligibleFollower == follower then
                                             allGameMessage({"MESSAGE_SCORE_FAIRY_FINISH", {'{p1}', getPlayerOwnerName(eligibleFollower.getVar('owner'))}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
@@ -2783,44 +2518,6 @@ function scoreFeatures()
     else
         return nextState('next')
     end
-end
-
-function rewardFairy()
-    local eligibleFollowers = fairyEligibleFollowers()
-    for _, eligibleFollower in ipairs(eligibleFollowers) do
-        if eligibleFollower ~= nil and eligibleFollower.getVar('owner') == activePlayers[currentPlayer] then
-            local tileStack = getObjectFromGUID(tileStack_GUID)
-            if tileStack == nil and finalTile_GUID == nil then
-                allGameMessage({"MESSAGE_FAIRY_WARNING_NO_TILESTACK"}, NEUTRAL_COLOR)
-            else
-                allGameMessage({"MESSAGE_SCORE_FAIRY_IDLE", {'{p1}', getPlayerOwnerName(eligibleFollower.getVar('owner'))}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
-                scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 1)
-            end
-        end
-    end
-end
-
---Find any followers that are on the same tile as the fairy
---returns a table of gameobjects
-function fairyEligibleFollowers()
-    local eligibleFollowers = {}
-    local fairy = getObjectFromGUID(fairy_GUID)
-    if fairy ~= nil then
-        local fairyXIndex, fairyZIndex, _, _ = getFigureTileLocation(fairy)
-        if tileGridOccupied(fairyXIndex, fairyZIndex) then
-            local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
-            for _, follower in ipairs(objs) do
-                if table.contains(FOLLOWER_TYPES, follower.getVar('figureName')) then
-                    local followerXIndex, followerZIndex, _, _ = getFigureTileLocation(follower)
-                    if fairyXIndex == followerXIndex and
-                     fairyZIndex == followerZIndex then
-                        table.insert(eligibleFollowers, follower)
-                    end
-                end
-            end
-        end
-    end
-    return eligibleFollowers
 end
 
 function rewardGold()

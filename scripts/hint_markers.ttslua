@@ -11,30 +11,33 @@ function showHintMarkers()
         if turnState == 'awaiting tile placement' then
             showTileMarkers(pickedUpObject)
         end
-    elseif (table.contains(FOLLOWER_TYPES, pickedUpObject.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, pickedUpObject.getVar('figureName')) or pickedUpObject.getVar('figureName') == 'Tower') and
-        ((currentMiniTurn ~= nil and pickedUpObject.getVar('owner') == activePlayers[currentMiniTurn]) or
-        (currentMiniTurn == nil and pickedUpObject.getVar('owner') == activePlayers[currentPlayer])) then
-        if turnState == 'awaiting figure decision' then
-            if pickedUpObject.getVar('figureName') == 'Tower' then
-                showTowerMarkers(pickedUpObject)
-            else
+    else
+        local pickedUpObjectfigureName = pickedUpObject.getVar('figureName')
+        if (table.contains(FOLLOWER_TYPES, pickedUpObjectfigureName) or table.contains(SPECIAL_FIGURE_TYPES, pickedUpObjectfigureName) or pickedUpObjectfigureName == 'Tower') and
+            ((currentMiniTurn ~= nil and pickedUpObject.getVar('owner') == activePlayers[currentMiniTurn]) or
+            (currentMiniTurn == nil and pickedUpObject.getVar('owner') == activePlayers[currentPlayer])) then
+            if turnState == 'awaiting figure decision' then
+                if pickedUpObjectfigureName == 'Tower' then
+                    showTowerMarkers(pickedUpObject)
+                else
+                    showFigureMarkers(pickedUpObject)
+                end
+            elseif pickedUpObjectfigureName == 'Wagon' and turnState == 'replace finished wagons' then
+                showWagonFeatureMarkers(pickedUpObject)
+            elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
+                showFlierFeatureMarkers(pickedUpObject)
+            elseif turnState == 'awaiting phantom decision' then
                 showFigureMarkers(pickedUpObject)
+            elseif turnState == 'prompt moving to carcassonne' then
+                showToCoCFeatureMarkers(pickedUpObject)
+            elseif turnState == 'prompt moving from carcassonne' or turnState == 'game over - prompt moving from carcassonne' then
+                showFromCoCFeatureMarkers(pickedUpObject)
             end
-        elseif pickedUpObject.getVar('figureName') == 'Wagon' and turnState == 'replace finished wagons' then
-            showWagonFeatureMarkers(pickedUpObject)
-        elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
-            showFlierFeatureMarkers(pickedUpObject)
-        elseif turnState == 'awaiting phantom decision' then
-            showFigureMarkers(pickedUpObject)
-        elseif turnState == 'prompt moving to carcassonne' then
+        elseif pickedUpObjectfigureName == 'Fairy' and turnState == 'awaiting figure decision' then
+            PnDFairyShowHighlights(pickedUpObject)
+        elseif pickedUpObjectfigureName == 'Count' and turnState == 'prompt moving count' then
             showToCoCFeatureMarkers(pickedUpObject)
-        elseif turnState == 'prompt moving from carcassonne' or turnState == 'game over - prompt moving from carcassonne' then
-            showFromCoCFeatureMarkers(pickedUpObject)
         end
-    elseif pickedUpObject.getVar('figureName') == 'Fairy' and turnState == 'awaiting figure decision' then
-        showFairyHighlights(pickedUpObject)
-    elseif pickedUpObject.getVar('figureName') == 'Count' and turnState == 'prompt moving count' then
-        showToCoCFeatureMarkers(pickedUpObject)
     end
     return 1
 end
@@ -170,7 +173,7 @@ function showFigureMarkers(newFigure)
         end
     end
     --magic portal
-    if tileHasMagicPortal and not hasAlreadyUsedMagicPortal and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
+    if PnDIsMagicPortalAvailable() and table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
         lastFrameTime = os.clock()
         allGameMessage(({"MESSAGE_HINTS_MAGIC_PORTAL_CALCULATING"}), NEUTRAL_COLOR)
 
@@ -280,27 +283,6 @@ function showTowerMarkers(newFigure)
     end
 
     showLocationMarkers(newFigure, locationMarkers)
-    return 1
-end
-
-function showFairyHighlights(newFigure)
-    highlightedTiles = {}
-    hasFairyLocation = false
-    local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
-    for _, obj in ipairs(objs) do
-        if obj.getVar('owner') == activePlayers[currentPlayer] and table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
-            local xIndex, zIndex, _, _ = getFigureTileLocation(obj)
-            if tileGridOccupied(xIndex, zIndex) then
-                if highlightedTiles[xIndex] == nil then highlightedTiles[xIndex] = {} end
-                highlightedTiles[xIndex][zIndex] = true
-                getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid).highlightOn(player_color_tints[activePlayers[currentPlayer]])
-                hasFairyLocation = true
-            end
-        end
-    end
-    if not hasFairyLocation then
-        allGameMessage(({"MESSAGE_HINTS_NO_FAIRY_LOCATION"}), NEUTRAL_COLOR)
-    end
     return 1
 end
 

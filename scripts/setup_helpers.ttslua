@@ -74,3 +74,38 @@ end
 function prepareStartingTileUnlock()
     prepareStartingTileLock = false
 end
+
+--figures that can be generated in code
+--{[<item name>] = {width = <width of object>}}}
+function prepareNeutralItemHelper(figureSetting, offset)
+    local figureSettingCopy = table.shallow_copy(figureSetting)
+
+    offset = offset + figureSetting.width / 2
+    local object_params = table.shallow_copy(figureSettingCopy.object_params)
+    object_params.position = {x = NEUTRAL_ITEMS_LOCATION.x + offset, y = NEUTRAL_ITEMS_LOCATION.y, z = NEUTRAL_ITEMS_LOCATION.z}
+    object_params.rotation = {0,180,0}
+    object_params.callback_owner = Global
+    object_params.callback = "neutralItemsUnlock"
+    neutralItemsLock = true
+    local obj = spawnObject(object_params)
+
+    local custom_object_params = table.shallow_copy(figureSettingCopy.custom_object_params)
+    obj.setCustomObject(custom_object_params)
+    obj.setName(translate(figureSettingCopy.name))
+    if figureSettingCopy.color ~= nil then
+        obj.setColorTint(figureSettingCopy.color)
+    end
+    if figureSettingCopy.name ~= nil then
+        obj.setLuaScript("figureName = '" .. figureSettingCopy.name .. "'")
+    end
+    if figureSettingCopy.custom_script ~= nil then
+        obj.setLuaScript(figureSettingCopy.custom_script)
+    end
+    obj.use_grid = false
+    obj.use_snap_points = figureSettingCopy.use_snap_points
+    offset = offset + figureSetting.width / 2
+    while neutralItemsLock do
+       coroutine.yield(0)
+    end
+    return obj.getGUID(), offset
+end

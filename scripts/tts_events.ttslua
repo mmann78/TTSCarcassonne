@@ -28,9 +28,8 @@ function onload(save_state)
         riverLoadData(saved_data)
         TnBLoadData(saved_data)
         KnRBLoadData(saved_data)
+        PnDLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
-        fairy_GUID = saved_data.fairy_GUID
-        dragon_GUID = saved_data.dragon_GUID
         flierDie_GUID = saved_data.flierDie_GUID
         lastPlacedTileX = saved_data.lastPlacedTileX
         lastPlacedTileZ = saved_data.lastPlacedTileZ
@@ -57,7 +56,6 @@ function onload(save_state)
         player_possession_areas = saved_data.player_possession_areas
         turnState = saved_data.turnState
         wagonFeatures = saved_data.wagonFeatures
-        seducedKnights = saved_data.seducedKnights
         carcassonneFigures = saved_data.carcassonneFigures
         wofPigPosition = saved_data.wofPigPosition
         numberActiveTowers = saved_data.numberActiveTowers
@@ -68,12 +66,6 @@ function onload(save_state)
         newBarn = saved_data.newBarn
         hasRansomedPrisoner = saved_data.hasRansomedPrisoner
         buriedTile = saved_data.buriedTile
-        dragonHasAwaken = saved_data.dragonHasAwaken
-        dragonMovesRemaining = saved_data.dragonMovesRemaining
-        dragonIllegalTiles = saved_data.dragonIllegalTiles
-        tileHasVolcano = saved_data.tileHasVolcano
-        tileHasMagicPortal = saved_data.tileHasMagicPortal
-        hasAlreadyUsedMagicPortal = saved_data.hasAlreadyUsedMagicPortal
         flier = saved_data.flier
         flierOffset = saved_data.flierOffset
         flierDirection = saved_data.flierDirection
@@ -169,12 +161,7 @@ function onSave()
         controlPanelSettings = controlPanelSettings,
         currentMiniTurn = currentMiniTurn,
         currentPlayer = currentPlayer,
-        dragonHasAwaken = dragonHasAwaken,
-        dragonIllegalTiles = dragonIllegalTiles,
-        dragonMovesRemaining = dragonMovesRemaining,
-        dragon_GUID = dragon_GUID,
         earnedPointsThisTile = earnedPointsThisTile,
-        fairy_GUID = fairy_GUID,
         featureIndex = featureIndex,
         featureList = featureList,
         featureMarker_GUIDs = featureMarker_GUIDs,
@@ -188,7 +175,6 @@ function onSave()
         flierOffset = flierOffset,
         handColor = handColor,
         hasAlreadyUsedFlier = hasAlreadyUsedFlier,
-        hasAlreadyUsedMagicPortal = hasAlreadyUsedMagicPortal,
         hasRansomedPrisoner = hasRansomedPrisoner,
         largestCity = largestCity,
         lastPlacedPlayerTiles = lastPlacedPlayerTiles,
@@ -206,12 +192,9 @@ function onSave()
         scoreSummary = scoreSummary,
         score_counter_guids = score_counter_guids,
         scores = scores,
-        seducedKnights = seducedKnights,
         shepherdAwaitingAction = shepherdAwaitingAction,
         showMarkers = showMarkers,
         tileGrid = tileGrid,
-        tileHasMagicPortal = tileHasMagicPortal,
-        tileHasVolcano = tileHasVolcano,
         tilesRemaining = tilesRemaining,
         towerX = towerX,
         towerZ = towerZ,
@@ -222,6 +205,7 @@ function onSave()
     riverSaveData(toSave)
     TnBSaveData(toSave)
     KnRBSaveData(toSave)
+    PnDSaveData(toSave)
     return jsonencode(toSave)
 end
 
@@ -286,15 +270,8 @@ end
 function onObjectSpawn(spawned_object)
     --This is intended to be called when a tile is drawn from the stack.
     if tostring(spawned_object) == 'Card(Clone) (LuaGameObjectScript)' then
-        local specialFeatures = getTileDataForTile(spawned_object).specialFeatures
-        if specialFeatures ~= nil then
-            for _, specialFeature in ipairs(specialFeatures) do
-                if controlPanelSettings['PnDDragon'] and specialFeature[1] == "Dragon" then
-                    if not dragonHasAwaken then
-                        gameNotification({"MESSAGE_DRAGON_TILE_DRAWN_BEFORE_AWAKENED"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-                    end
-                end
-            end
+        if controlPanelSettings['PnDDragon'] and not PnDIsDragonAwake(getTileDataForTile(spawned_object).specialFeatures) then
+            gameNotification({"MESSAGE_DRAGON_TILE_DRAWN_BEFORE_AWAKENED"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         end
     end
 end
@@ -499,7 +476,7 @@ function onObjectPickUp(player, pickedUpObject)
         if tileGridOccupied(xIndex, zIndex) and tileGrid[xIndex][zIndex].tile_guid == pickedUpObject.getGUID() then
             if lastPlacedTileX ~= nil then
                 clearFigureOptions()
-                seducedKnights = {}
+                PnDClearSeducedKnights()
             end
             lastPlacedTileX = nil
             lastPlacedTileZ = nil

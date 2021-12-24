@@ -275,22 +275,20 @@ function playerStateHandler()
         createRansomButtons()
         return nextState('next')
     elseif turnState == 'reward fairy' then
-        rewardFairy()
+         PnDFairyReward()
         return nextState('next')
     elseif turnState == 'eliminate oldest flea' then
         return nextState('next')
     elseif turnState == 'awaiting tile placement' then
         --if a builder allowed a player to place another tile, the turnState will return here
         --reset magic portal here so that the builder tile will not be restricted from using the portal: https://github.com/DinnerBuffet/TTSCarcassonne/issues/7
-        hasAlreadyUsedMagicPortal = false
+        PnDSetAlreadyUsedMagicPortal(false)
         earnedPointsThisTile = {}
         return
     elseif turnState == 'check added tile features' then
         highlightLastPlacedTiles()
         buriedTile = nil
-        tileHasVolcano = false
-        tileHasMagicPortal = false
-        seducedKnights = {}
+        PnDClearAddedTileFeature()
         currentPlayerAbbot = nil
         shepherdAwaitingAction = nil
         TnBBuilderClearAddedTileFeature()
@@ -307,17 +305,24 @@ function playerStateHandler()
     elseif turnState == 'check added tile feature - wheel of fortune - crown' then
         return rewardCrownSpaces()
     elseif turnState == 'check added tile feature - volcano' then
-        return checkTileForVolcano()
+        local state = PnDCheckTileForVolcano(lastPlacedTileX, lastPlacedTileZ)
+        if state == 1 then
+            return -- waiting for figures to be returned
+        elseif state == 2 then
+            return nextState('dragon moved')
+        else
+            return nextState('next')
+        end
     elseif turnState == 'check added tile feature - volcano - delay' then
         Timer.create({identifier=os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=2.00})
     elseif turnState == 'check added tile feature - volcano - lock' then
-        getObjectFromGUID(dragon_GUID).setLock(true)
+        PnDDragonLock()
         return nextState('next')
     elseif turnState == 'check added tile feature - princess' then
-        checkTileForPrincess()
+        PnDCheckTileForPrincess(lastPlacedTileX, lastPlacedTileZ)
         return nextState('next')
     elseif turnState == 'check added tile feature - magic portal' then
-        checkTileForMagicPortal()
+        PnDCheckTileForMagicPortal(lastPlacedTileX, lastPlacedTileZ)
         return nextState('next')
     elseif turnState == 'check added tile feature - gold' then
         return checkTileForGold()
@@ -331,7 +336,7 @@ function playerStateHandler()
         gameNotification({"MESSAGE_FIGURE_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
 
         confirmationDisplayed = false
-        hasFairyLocation = false
+        local hasFairyLocation = false
         local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
         for _, obj in ipairs(objs) do
             if obj.getVar('owner') == activePlayers[currentPlayer] and table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
@@ -342,11 +347,7 @@ function playerStateHandler()
             end
         end
         if hasFairyLocation then
-            local fairy = getObjectFromGUID(fairy_GUID)
-            if controlPanelSettings['PnDFairy'] and fairy ~= nil then
-                fairy.setLock(false)
-                fairy.highlightOn({1,1,1})
-            end
+            PnDFairyHighlight()
         end
         return displayFigureButtons()
     elseif turnState == 'retrieve abbot' then
@@ -422,7 +423,7 @@ function playerStateHandler()
         return returnFigures()
     elseif turnState == 'post figure events' or turnState == 'post phantom events' then
         clearFigureOptions()
-        seducedKnights = {}
+        PnDClearSeducedKnights()
         currentPlayerAbbot = nil
         if turnState == 'post figure events' then
             local tile = tileGrid[lastPlacedTileX][lastPlacedTileZ]
@@ -469,28 +470,31 @@ function playerStateHandler()
         return nextState('next')
     elseif turnState == 'check added tile feature - dragon' then
         shepherdAwaitingAction = nil
-        return checkTileForDragon()
+        if PnDCheckTileForDragon(lastPlacedTileX, lastPlacedTileZ) then
+            return nextState('has dragon')
+        else
+            nextState('no dragon')
+        end
     elseif turnState == 'post figure event - dragon movement' then
         if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
-        if dragonMovesRemaining > 0 then
-            for _, tileCoords in ipairs(dragonIllegalTiles) do
-                getObjectFromGUID(tileGrid[tileCoords[1]][tileCoords[2]].tile_guid).highlightOn({1,0,0})
+        if PnDIsDragonMovesRemaining() then
+            PnDHighlightIllegalDragonTiles(true)
+            if not PnDCreateDragonButtons() then
+                return nextState('next')
             end
-            return createDragonButtons()
+            return
         else
             return nextState('next')
         end
     elseif turnState == 'post figure event - dragon movement - delay' then
         Timer.create({identifier=os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.00})
     elseif turnState == 'post figure event - dragon movement - lock' then
-        getObjectFromGUID(dragon_GUID).setLock(true)
+        PnDDragonLock()
         return nextState('next')
     elseif turnState == 'score features' then
         clearFigureOptions()
         currentMiniTurn = nil
-        for _, tileCoords in ipairs(dragonIllegalTiles) do
-            getObjectFromGUID(tileGrid[tileCoords[1]][tileCoords[2]].tile_guid).highlightOff()
-        end
+        PnDHighlightIllegalDragonTiles(false)
         return scoreFeatures()
     elseif turnState == 'post scoring events' then
         return nextState('next')

@@ -126,7 +126,7 @@ function AIStateHandler()
         gameNotification("AI not implemented for expansion: The Princess & The Dragon", NEUTRAL_COLOR, activePlayers[currentPlayer])
         return
         --if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
-        --if dragonMovesRemaining > 0 then
+        --if PnDIsDragonMovesRemaining() then
         --    return createDragonButtons()
         --else
         --    return nextState('next')
@@ -1422,7 +1422,7 @@ function AICalculateActiveScoresEasy(newXIndex, newZIndex)
             end
             if followerCounts[player] > topWeight then topWeight = followerCounts[player] end
         end
-        -- local eligibleFollowers = fairyEligibleFollowers()
+        -- local eligibleFollowers = PnDFairyEligibleFollowers()
         -- for _, eligibleFollower in ipairs(eligibleFollowers) do
         --     if eligibleFollower == follower then
         --         allGameMessage({"MESSAGE_SCORE_FAIRY_FINISH", {'{c1}', eligibleFollower.getDescription()}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
@@ -2589,7 +2589,7 @@ function AICalculateFeatureScore(blockPercentage, featureNums, nameOfFeature, sp
         end
         if followerCounts[player] > topWeight then topWeight = followerCounts[player] end
     end
-    -- local eligibleFollowers = fairyEligibleFollowers()
+    -- local eligibleFollowers = PnDFairyEligibleFollowers()
     -- for _, eligibleFollower in ipairs(eligibleFollowers) do
     --     if eligibleFollower == follower then
     --         allGameMessage({"MESSAGE_SCORE_FAIRY_FINISH", {'{c1}', eligibleFollower.getDescription()}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
