@@ -18,7 +18,7 @@ function showHintMarkers()
             (currentMiniTurn == nil and pickedUpObject.getVar('owner') == activePlayers[currentPlayer])) then
             if turnState == 'awaiting figure decision' then
                 if pickedUpObjectfigureName == 'Tower' then
-                    showTowerMarkers(pickedUpObject)
+                    towerShowMarkers(pickedUpObject)
                 else
                     showFigureMarkers(pickedUpObject)
                 end
@@ -217,69 +217,6 @@ function showFigureMarkers(newFigure)
                     if (turnState ~= 'awaiting figure decision' and turnState ~= 'awaiting phantom decision') or newFigure.held_by_color == nil then
                         return 1
                     end
-                end
-            end
-        end
-    end
-
-    showLocationMarkers(newFigure, locationMarkers)
-    return 1
-end
-
-function showTowerMarkers(newFigure)
-    getActiveFigures()
-    local locationMarkers = {}
-    locationMarkers[lastPlacedTileX] = {}
-    locationMarkers[lastPlacedTileX][lastPlacedTileZ] = {}
-    local featuresToMark = table.shallow_copy(featureList)
-    local positionsToVisit = {}
-
-    lastFrameTime = os.clock()
-    allGameMessage(({"MESSAGE_HINTS_TOWER_CALCULATING"}), NEUTRAL_COLOR)
-
-    for x, tileColumn in pairs(tileGrid) do
-        for z, tileLocation in pairs(tileColumn) do
-            local positionsToVisit = {}
-            local tileData = getTileDataForTile(getObjectFromGUID(tileLocation.tile_guid))
-            local specialFeatures = tileData.specialFeatures
-            if specialFeatures ~= nil then
-                for specialFeatureNum, specialFeature in pairs(specialFeatures) do
-                    if specialFeature[1] == 'Tower Foundation' then
-                        table.insert(positionsToVisit, specialFeatureNum+12)
-                    end
-                end
-            end
-
-            --since only specialFeatures are used, and since special feature positions are treated the same in the
-            --context of both featureMapPositions and tilePositions, they can be used interchangably here
-            for _, featureMapPosition in ipairs(positionsToVisit) do
-                local featureNum = getFeatureNumAt(x, z, featureMapPosition)
-
-                if featureNum ~= nil and featuresToMark[featureNum] ~= nil then
-                    if isValidFigureLocation(newFigure, x, z, featureMapPosition, featureNum, false) then
-                        setOrUpdateLocationMarker(locationMarkers, x, z, featureMapPosition, 0)
-                        featuresToMark[featureNum] = nil
-                    end
-                end
-                if os.clock() - lastFrameTime > FRAME_TIME then
-                    lastFrameTime = lastFrameTime + FRAME_TIME
-                    coroutine.yield(0)
-                end
-                --if the turnState already changed or the figure is no longer being held by the time all of the positions have been calculated, don't show the hints
-                if turnState ~= 'awaiting figure decision' or newFigure.held_by_color == nil then
-                    return 1
-                end
-            end
-        end
-    end
-
-    for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
-        if obj.getVar('figureName') == 'Tower' then
-            local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
-            if locationMarkers[xIndex] ~= nil and locationMarkers[xIndex][zIndex] ~= nil then
-                local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
-                if locationMarkers[xIndex][zIndex][closestFeatureMapPosition] ~= nil then
-                    setOrUpdateLocationMarker(locationMarkers, xIndex, zIndex, closestFeatureMapPosition, 1)
                 end
             end
         end

@@ -74,30 +74,7 @@ function checkFigurePlacement(params)
             return nextState('placed flier')
         end
         if newFigure.getVar('figureName') == 'Tower' then
-            numberActiveTowers = 0
-            towerX = xIndex
-            towerZ = zIndex
-            for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
-                if obj.getVar('figureName') == 'Tower' then
-                    local nestedXIndex, nestedZIndex, xPosition, zPosition = getFigureTileLocation(obj)
-                    if xIndex == nestedXIndex and zIndex == nestedZIndex then
-                        local nestedClosestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
-                        if closestFeatureMapPosition == nestedClosestFeatureMapPosition then
-                            numberActiveTowers = numberActiveTowers + 1
-                        end
-                    end
-                end
-            end
-            if numberActiveTowers == 1 then
-                allGameMessage(({"MESSAGE_TOWER_PLACED"}), player_color_tints[activePlayers[currentPlayer]])
-            else
-                allGameMessage(({"MESSAGE_TOWER_INCREASED"}), player_color_tints[activePlayers[currentPlayer]])
-            end
-            if AUTOLOCK then
-                newFigure.setLock(true)
-            end
-            local yawRotation = getPositionYawRotation(closestFeatureMapPosition, 180)
-            newFigure.setRotation({0, yawRotation, 0})
+            towerFigurePlacement(xIndex, zIndex, closestFeatureMapPosition)
             return nextState('placed tower')
         end
         if nameOfFeature == 'Tower Foundation' then

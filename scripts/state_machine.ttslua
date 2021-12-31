@@ -265,13 +265,11 @@ function playerStateHandler()
         TnBBuilderClearTakenBuilderTile()
         hasAlreadyUsedFlier = false
         confirmationDisplayed = false
-        --ransoming a prisoner can only be done once per turn. No second ransom is allowed due to drawing an extra tile for the builder (CAR 136)
-        hasRansomedPrisoner = false
         AnMBeginTurn()
         lastPlacedTileX = nil
         lastPlacedTileZ = nil
         highlightLastPlacedTiles()
-        createRansomButtons()
+        towerBeginTurn()
         return nextState('next')
     elseif turnState == 'reward fairy' then
          PnDFairyReward()
@@ -384,17 +382,25 @@ function playerStateHandler()
     elseif turnState == 'prompt tower capture' then
         clearFigureOptions()
         capturableFollowers = {}
-        return promptTowerCapture()
+        if not towerPromptTowerCapture() then
+            return nextState('skip capture')
+        end
+        return
     elseif turnState == 'tower - return follower' then
         return returnFigures()
     elseif turnState == 'tower capture - delay' then
         Timer.create({identifier=os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=FIGURE_CAPTURE_DELAY})
     elseif turnState == 'tower capture - exchange prisoners' then
-        return exchangePrisoners()
+        local numPrisoners = towerExchangePrisoners()
+        if numPrisoners == 0 then
+            return nextState('next')
+        elseif numPrisoners == 1 then
+            return nextState('return followers')
+        end
     elseif turnState == 'tower capture - return exchanged prisoners' then
         return returnFigures()
     elseif turnState == 'tower capture - recreate buttons' then
-        createRansomButtons()
+        towerCreateRansomButtons()
         return nextState('next')
     elseif turnState == 'initialize shepherd' then
         clearFigureOptions()

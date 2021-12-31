@@ -78,7 +78,6 @@ end
 function endTurn()
     for _, object in ipairs(getAllObjects()) do
         if tostring(object) == 'Card(Clone) (LuaGameObjectScript)' or table.contains(FOLLOWER_TYPES, object.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, object.getVar('figureName')) then
-            --hasRansomedPrisoner
             object.highlightOff()
             object.clearButtons()
         end
@@ -257,9 +256,7 @@ function initializeScoreSummary()
         if controlPanelSettings['GoldminesGold'] then
             scoreSummary[player_color]['Gold'] = 0
         end
-        if controlPanelSettings['TowerTowers'] then
-            scoreSummary[player_color]['Ransom'] = 0
-        end
+        towerInitializeScoreSummary(scoreSummary[player_color])
         if pigIsEnabled() then
             scoreSummary[player_color]['Wheel'] = 0
         end
@@ -1417,189 +1414,6 @@ function retrieveAbbotButton(object, sPlayer)
     allErrorMessage("Error: The abbot is currently on an invalid feature. Abbots can only be placed on gardens and cloisters.", activePlayers[currentPlayer])
 end
 
-function promptTowerCapture()
-	local towerRange = numberActiveTowers
-    if controlPanelSettings['TowersNerfTower'] then
-		towerRange = numberActiveTowers - 1
-	end
-    getObjectFromGUID(tileGrid[towerX][towerZ].tile_guid).highlightOn({1,0,0})
-	if towerRange > 0 then
-		for i=1, towerRange do
-			for side, sideDelta in ipairs(SIDE_DELTA) do
-				if tileGridOccupied(towerX + sideDelta.x * i, towerZ + sideDelta.z * i) then
-					getObjectFromGUID(tileGrid[towerX + sideDelta.x * i][towerZ + sideDelta.z * i].tile_guid).highlightOn({1,0,0})
-				end
-			end
-		end
-	end
-    local hasFollower = false
-    capturableFollowers = {}
-    for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
-        if table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) then
-            local xIndex, zIndex, _, _ = getFigureTileLocation(obj)
-			if tileGridOccupied(xIndex, zIndex) then
-                if (xIndex == towerX and zIndex <= towerZ + towerRange and zIndex >= towerZ - towerRange) or (zIndex == towerZ and xIndex <= towerX + towerRange and xIndex >= towerX - towerRange) then
-                    local captureFollowerButtonParam = {
-                       index = 1, label = translate({"BUTTON_LABEL_CAPTURE", {"{f1}", obj.getName()}}), click_function = 'captureFollowerButton',
-                       position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1100, height=600, font_size = 200, function_owner = nil
-                    }
-                    table.insert(capturableFollowers, obj.getGUID())
-                    createNormalizedButton(obj, captureFollowerButtonParam, true)
-                    hasFollower = true
-                end
-            end
-        end
-    end
-    if hasFollower then
-        local skipCaptureButtonParam = {
-           index = 2, label = translate("BUTTON_LABEL_SKIP_TOWER_CAPTURE"), click_function = 'skipCaptureButton',
-           position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=1.5}, width = 1400, height=600, font_size = 200, function_owner = nil
-        }
-        createNormalizedArbitraryButton({x=-towerX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=towerZ * TILE_SPACING - MIDDLE_OFFSET.z}, skipCaptureButtonParam, true)
-    else
-        return nextState('skip capture')
-    end
-end
-
-function captureFollowerButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        --although we later remove these buttons, there is a slight delay during the figure removal, so we remove them now
-        clearArbitraryButtons(true)
-        for _, follower in ipairs(capturableFollowers) do
-            getObjectFromGUID(follower).clearButtons()
-        end
-
-        removeDependentFigures(object)
-        if object.getVar('owner') == activePlayers[currentPlayer] then
-            table.insert(removedFigures, {guid=object.getGUID(), winner=false})
-            allGameMessage({"MESSAGE_TOWER_SELF_CAPTURE", {'{c1}', object.getDescription()}, {'{f1}', object.getName()}}, player_color_tints[object.getVar('owner')])
-            return nextState('return follower')
-        else
-            local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['CapturedFollower'].x, PLAYER_POSSESSION_POSITIONS['CapturedFollower'].z, player_possession_areas[activePlayers[currentPlayer]].rotation)
-            x = player_possession_areas[activePlayers[currentPlayer]].x + x
-            z = player_possession_areas[activePlayers[currentPlayer]].z + z
-            local prisoners = getPrisoners()
-            for i=1, 6 do
-                local prisonerInThisSpot = false
-                for _, prisoner in ipairs(prisoners[activePlayers[currentPlayer]]) do
-                    local vPos = prisoner.getPosition()
-                    local vPosX = vPos.x
-                    local vPosZ = vPos.z
-                    local dX = x - vPosX
-                    local dZ = z - vPosZ
-                    if dX<0.5 and dX>-0.5 and dZ<0.5 and dZ>-0.5 then
-                        prisonerInThisSpot = true
-                    end
-                end
-                if not prisonerInThisSpot then break end
-                local relativeX, relativeZ = rotateCoordinates(PLAYER_POSSESSION_SPACING, 0, player_possession_areas[activePlayers[currentPlayer]].rotation)
-                x = x - relativeX
-                z = z - relativeZ
-            end
-            object.setLock(false)
-            object.setPositionSmooth({x, 2, z})
-            object.setRotationSmooth({0,  player_possession_areas[activePlayers[currentPlayer]].rotation * -90, 0})
-            allGameMessage({"MESSAGE_TOWER_CAPTURE", {'{c1}', object.getDescription()}, {'{f1}', object.getName() .. RGBToBracketedHex(NEUTRAL_COLOR)}, {'{p1}', RGBToBracketedHex(player_color_tints[activePlayers[currentPlayer]]) .. getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[object.getVar('owner')])
-            return nextState('capture follower')
-        end
-    end
-end
-
-function skipCaptureButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        return nextState('skip capture')
-    end
-end
-
-function createRansomButtons()
-    allPrisoners = getPrisoners()
-    for player, prisoners in pairs(allPrisoners) do
-        for _, prisoner in ipairs(prisoners) do
-            if prisoner.getVar('owner') == activePlayers[currentPlayer] then
-                local ransomFollowerButtonParam = {
-                   index = 1, label = translate({"BUTTON_LABEL_RANSOM", {"{f1}", prisoner.getName()}}), click_function = 'ransomFollowerButton',
-                   position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1100, height=600, font_size = 200, function_owner = nil
-                }
-                local rotation = player_possession_areas[player].rotation + 2
-                if rotation > 3 then rotation = rotation - 4 end
-                createNormalizedButton(prisoner, ransomFollowerButtonParam, false, rotation)
-            end
-        end
-    end
-end
-
-function ransomFollowerButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        local captor = nil
-        for player, prisoners in pairs(allPrisoners) do
-            for _, prisoner in ipairs(prisoners) do
-                if object == prisoner then
-                    captor = player
-                end
-                prisoner.clearButtons()
-            end
-        end
-        table.insert(removedFigures, {guid=object.getGUID(), winner=false})
-        scorePoints(activePlayers[currentPlayer], 'Ransom', -3)
-        if captor ~= nil then
-            scorePoints(captor, 'Ransom', 3)
-            allGameMessage({"MESSAGE_TOWER_RANSOM", {'{c1}', object.getDescription()}, {'{f1}', object.getName() .. RGBToBracketedHex(NEUTRAL_COLOR)}, {'{c2}', RGBToBracketedHex(player_color_tints[captor]) .. captor}}, player_color_tints[object.getVar('owner')])
-        else
-            allErrorMessage({"MESSAGE_TOWER_ERROR_MISSING_CAPTURE"})
-        end
-        return returnFigures(true)
-    end
-end
-
-function getPrisoners()
-    local prisoners = {}
-    for _, player in ipairs(activePlayers) do
-        prisoners[player] = {}
-        local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
-        for _, obj in ipairs(playerPossessions) do
-            if table.contains(FOLLOWER_TYPES, obj.getVar('figureName')) and obj.getVar('owner') ~= player then
-                table.insert(prisoners[player], obj)
-            end
-        end
-    end
-    return prisoners
-end
-
-function exchangePrisoners()
-    local prisoners = getPrisoners()
-    prisonersOfOtherPlayer = {}
-    if(prisoners[activePlayers[currentPlayer]][1] ~= nil and #prisoners[prisoners[activePlayers[currentPlayer]][1].getVar('owner')] ~= 0) then
-        for _, prisoner in ipairs(prisoners[prisoners[activePlayers[currentPlayer]][1].getVar('owner')]) do
-            if prisoner.getVar('owner') == activePlayers[currentPlayer] then
-                table.insert(prisonersOfOtherPlayer, prisoner)
-            end
-        end
-    end
-    if #prisonersOfOtherPlayer == 0 then
-        prisoners[activePlayers[currentPlayer]][1].setLock(true)
-        return nextState('next')
-    elseif #prisonersOfOtherPlayer == 1 then
-        prisoners[activePlayers[currentPlayer]][1].clearButtons()
-        prisonersOfOtherPlayer[1].clearButtons()
-        table.insert(removedFigures, {guid=prisoners[activePlayers[currentPlayer]][1].getGUID(), winner=false})
-        table.insert(removedFigures, {guid=prisonersOfOtherPlayer[1].getGUID(), winner=false})
-        allGameMessage({"MESSAGE_TOWER_EXCHANGE_FOLLOWER", {'{p1}', getPlayerOwnerName(prisoners[activePlayers[currentPlayer]][1].getVar('owner')) .. RGBToBracketedHex(NEUTRAL_COLOR)}, {'{p2}', RGBToBracketedHex(player_color_tints[activePlayers[currentPlayer]]) .. getPlayerOwnerName(activePlayers[currentPlayer]) .. RGBToBracketedHex(NEUTRAL_COLOR)}}, player_color_tints[prisoners[activePlayers[currentPlayer]][1].getVar('owner')])
-        return nextState('return followers')
-    else
-        prisoners[activePlayers[currentPlayer]][1].clearButtons()
-        table.insert(removedFigures, {guid=prisoners[activePlayers[currentPlayer]][1].getGUID(), winner=false})
-        allGameMessage({"MESSAGE_TOWER_EXCHANGE_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}, {'{p2}', getPlayerOwnerName(prisoners[activePlayers[currentPlayer]][1].getVar('owner'))}}, player_color_tints[activePlayers[currentPlayer]])
-        for _, prisoner in ipairs(prisonersOfOtherPlayer) do
-            prisoner.clearButtons()
-            local returnFollowerButtonParam = {
-               index = 1, label = translate({"BUTTON_LABEL_RETURN", {"{f1}", prisoner.getName()}}), click_function = 'returnFollowerButton',
-               position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1700, height=600, font_size = 200, function_owner = nil
-            }
-            createNormalizedButton(prisoner, returnFollowerButtonParam, true)
-        end
-    end
-end
-
 function returnFollowerButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         --although we later remove these buttons, there is a slight delay during the figure removal, so we remove them now
@@ -1651,7 +1465,7 @@ function clearFigureOptions()
 end
 
 function clearArbitraryButtons(alsoClearHighlights)
-    allPrisoners = getPrisoners()
+    allPrisoners = towerGetPrisoners()
     for _, object in ipairs(getAllObjects()) do
         if tostring(object) == 'Card(Clone) (LuaGameObjectScript)' then
             if alsoClearHighlights then

@@ -30,6 +30,7 @@ function onload(save_state)
         TnBLoadData(saved_data)
         KnRBLoadData(saved_data)
         PnDLoadData(saved_data)
+        towerLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
         flierDie_GUID = saved_data.flierDie_GUID
         lastPlacedTileX = saved_data.lastPlacedTileX
@@ -57,12 +58,8 @@ function onload(save_state)
         turnState = saved_data.turnState
         carcassonneFigures = saved_data.carcassonneFigures
         wofPigPosition = saved_data.wofPigPosition
-        numberActiveTowers = saved_data.numberActiveTowers
-        towerX = saved_data.towerX
-        towerZ = saved_data.towerZ
         currentMiniTurn = saved_data.currentMiniTurn
         shepherdAwaitingAction = saved_data.shepherdAwaitingAction
-        hasRansomedPrisoner = saved_data.hasRansomedPrisoner
         buriedTile = saved_data.buriedTile
         flier = saved_data.flier
         flierOffset = saved_data.flierOffset
@@ -124,7 +121,7 @@ function onload(save_state)
     progressPartiallyCompleteStates()
     if turnState ~= 'pre-game' then
 		if turnState ~= 'game over - scoring' then
-			createRansomButtons()
+			towerCreateRansomButtons()
             highlightLastPlacedTiles()
 		end
         return stateHandler()
@@ -173,12 +170,10 @@ function onSave()
         flierOffset = flierOffset,
         handColor = handColor,
         hasAlreadyUsedFlier = hasAlreadyUsedFlier,
-        hasRansomedPrisoner = hasRansomedPrisoner,
         lastPlacedPlayerTiles = lastPlacedPlayerTiles,
         lastPlacedTileX = lastPlacedTileX,
         lastPlacedTileZ = lastPlacedTileZ,
         linkedFeatures = linkedFeatures,
-        numberActiveTowers = numberActiveTowers,
         placedFerries = placedFerries,
         playerPossessionScriptingZones = playerPossessionScriptingZones,
         player_color_tints = player_color_tints,
@@ -191,8 +186,6 @@ function onSave()
         showMarkers = showMarkers,
         tileGrid = tileGrid,
         tilesRemaining = tilesRemaining,
-        towerX = towerX,
-        towerZ = towerZ,
         turnState = turnState,
         wofPigPosition = wofPigPosition
     }
@@ -202,6 +195,7 @@ function onSave()
     TnBSaveData(toSave)
     KnRBSaveData(toSave)
     PnDSaveData(toSave)
+    towerLoadData(toSave)
     return jsonencode(toSave)
 end
 
