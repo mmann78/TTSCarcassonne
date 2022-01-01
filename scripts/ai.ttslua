@@ -2942,7 +2942,7 @@ function AIChooseShepherdAction()
     if featureList[featureNum].numOpenings <= 1 then
         local params = {}
         params.shepherd = shepherd
-        scoreFlock(params)
+        HaSScoreFlock(params)
         return 1
     end
 
@@ -2983,15 +2983,11 @@ function AIChooseShepherdAction()
     -- newTokenValue = newTokenValue - blockPenalty
 
     if newTokenValue > SHEPHERD_DRAW_TOKEN_THRESHOLD then
-        if controlPanelSettings['PnDDragon'] then
-            addSheepToTile(shepherd)
-        else
-            addSheepToField(shepherd)
-        end
+        HaSAddSheep(shepherd)
     else
         local params = {}
         params.shepherd = shepherd
-        scoreFlock(params)
+        HaSScoreFlock(params)
     end
     return 1
 end

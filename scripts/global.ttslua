@@ -315,7 +315,6 @@ hasAlreadyUsedFlier = false
 carcassonneFigures = nil
 earnedPointsThisTile = {}
 removedFigures = {}
-shepherdAwaitingAction = nil
 wofPigPosition = 1
 
 tileStack_GUID = BASE_TILE_STACK_GUID
@@ -510,6 +509,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\scripts\expansion_count_king_robber
 
 #include !\TTSCarcassonne\scripts\expansion_princess_dragon
+
+#include !\TTSCarcassonne\scripts\expansion_hills_sheep
 
 #include !\TTSCarcassonne\scripts\expansion_tower
 

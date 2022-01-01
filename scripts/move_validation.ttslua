@@ -217,7 +217,7 @@ function checkFigurePlacement(params)
 
     clearArbitraryButtons() --TODO: is this needed? I took this from the wagon portion
     if newFigure.getVar('figureName') == 'Shepherd' then
-        shepherdAwaitingAction = newFigure.getGUID()
+        HaSSetShepard(newFigure.getGUID())
         return nextState('placed shepherd')
     elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
         return nextState('placed flier')

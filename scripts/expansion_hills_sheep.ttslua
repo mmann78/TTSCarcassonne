@@ -1,0 +1,466 @@
+--Encapsulate the behavior of the Hills and Sheep expansion (HaS)
+
+local shepherdAwaitingAction = nil
+
+--Scoring data specific to expansion
+function HaSInitializeScoreSummary(player)
+    if controlPanelSettings['HnSShepherd'] then
+        player['Shepherd'] = 0
+    end
+end
+
+--Player scoring data specific to expansion
+function HaSInitializeAdditionalPlayerStats(player)
+
+end
+
+function HaSShepherdCheckAddedTileFeature(figure, nameOfFeature)
+    if figure.getVar('figureName') == 'Shepherd' and nameOfFeature == 'Field' then
+        HaSSetShepard(figure.getGUID())
+    end
+end
+
+function HaSShepherdClearAddedTileFeature()
+    shepherdAwaitingAction = nil
+end
+
+function HaSGetActiveSheep(activeNeutralFigures)
+    if controlPanelSettings['HnSShepherd'] then
+        for _, obj in ipairs(getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()) do
+            if table.contains(SHEEP_TOKEN_TYPES, obj.getVar('tokenName')) then
+                local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(obj)
+                if tileGridOccupied(xIndex, zIndex) then
+                    local closestFeatureMapPosition = findClosestPosition(xIndex, zIndex, xPosition, zPosition)
+                    local featureNum = getFeatureNumAt(xIndex, zIndex, closestFeatureMapPosition)
+                    --print(obj.getGUID() .. ": pos - " .. closestPosition .. " featureNum - " .. featureNum)
+                    if activeNeutralFigures[featureNum] == nil then
+                        activeNeutralFigures[featureNum] = {}
+                        activeNeutralFigures[featureNum].sheepTokens = {}
+                    end
+                    table.insert(activeNeutralFigures[featureNum].sheepTokens, obj)
+                end
+            end
+        end
+    end
+end
+
+function HaSSetShepard(guid)
+    shepherdAwaitingAction = guid
+end
+
+function HaSPromptShepherd()
+    if shepherdAwaitingAction == nil then return false end
+
+    local shepherdExpandButtonParam = {
+       index = 1, label = translate("BUTTON_LABEL_EXPAND_FLOCK"), click_function = 'HaSAddSheepToFlockButton',
+       position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=1.5}, width = 1400, height=700, font_size = 200, function_owner = nil
+    }
+    local shepherdHerdButtonParam = {
+       index = 2, label = translate("BUTTON_LABEL_HERD_FLOCK"), click_function = 'HaSScoreFlockButton',
+       position = {x=0, y=FLOATING_BUTTON_HEIGHT, z=2.3}, width = 1400, height=700, font_size = 200, function_owner = nil
+    }
+    local shepherd = getObjectFromGUID(shepherdAwaitingAction)
+    createNormalizedButton(shepherd, shepherdExpandButtonParam, true)
+    createNormalizedButton(shepherd, shepherdHerdButtonParam, true)
+    allGameMessage({"MESSAGE_SHEPHERD_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+    return true
+end
+
+function HaSScoreFlockButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        local shepherd = getObjectFromGUID(shepherdAwaitingAction)
+        clearArbitraryButtons()
+        local params = {}
+        params.shepherd = shepherd
+        HaSScoreFlock(params)
+    end
+end
+
+function HaSAddSheepToField(shep)
+    shepherd = shep
+--    startLuaCoroutine(self, 'HaSScoreFlockCoroutine')
+
+    startLuaCoroutine(self, 'HaSAddSheepToFieldCoroutine')
+end
+
+--will go through all possible locations on the field and find an empty spot where the sheep tile can be put
+--Note: according to this forum post, this behavior actually violates the rules: https://boardgamegeek.com/thread/1434965/question-about-location-sheep-tokens
+--At first, I thought I could get around this by making the dragon not eat the sheep, but in the event that multiple fields are joined together, there needs to be a way to separate the different sheep groups
+--We can still use it for games that do not include the dragon, because I think it looks nicer
+function HaSAddSheepToFieldCoroutine()
+    --no error checking for the shepherd. Assume that it is still in a legal position
+    local shepherdTileXIndex, shepherdTileZIndex, shepherdXPosition, shepherdZPosition = getFigureTileLocation(shepherd)
+    local shepherdClosestTilePosition = findClosestTilePosition(shepherdTileXIndex, shepherdTileZIndex, shepherdXPosition, shepherdZPosition)
+    getFeatureComponents(shepherdTileXIndex, shepherdTileZIndex, shepherdClosestTilePosition, 1, true)
+    --now that we've traversed for this shepherd, check all positions in the field for an open spot
+    for _, traversedTileCoord in ipairs(traversedTileCoords) do
+        if traversedFeaturePositions[traversedTileCoord.x] ~= nil and traversedFeaturePositions[traversedTileCoord.x][traversedTileCoord.z] ~= nil then
+            for location, traversedFeaturePosition in pairs(traversedFeaturePositions[traversedTileCoord.x][traversedTileCoord.z]) do
+                if location > 4 and location < 13 and traversedFeaturePosition == 1 then
+                    local occupied = false
+                    --debugMessage(1, "checking x: " .. traversedTileCoord.x .. " z: " .. traversedTileCoord.z .. " location: " .. location .. " for empty sheep location")
+                    for _, figureSet in ipairs({traversedFollowers, traversedSheepTokens, traversedSpecialFigures}) do
+                        for _, figure in ipairs(figureSet) do
+                            local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(figure)
+                            if xIndex == traversedTileCoord.x and zIndex == traversedTileCoord.z then
+                                local x, z = getTileFeatureLocation(location, getObjectFromGUID(tileGrid[traversedTileCoord.x][traversedTileCoord.z].tile_guid), tileGrid[traversedTileCoord.x][traversedTileCoord.z].rotation)
+                                if ((xPosition - x) * (xPosition - x)) + ((zPosition - z) * (zPosition - z)) < 0.1 then
+                                    --debugMessage(2, "Too close to sheep location (" .. ((xPosition - x) * (xPosition - x)) + ((zPosition - z) * (zPosition - z)) .. ")")
+                                    occupied = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if not occupied then
+                        local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
+                        if sheepTileBag ~= nil then
+                            local params = {}
+                            local x, z = getTileFeatureLocation(location, getObjectFromGUID(tileGrid[traversedTileCoord.x][traversedTileCoord.z].tile_guid), tileGrid[traversedTileCoord.x][traversedTileCoord.z].rotation)
+                            params.position = {x=(x * TILE_SPACING) + (traversedTileCoord.x * TILE_SPACING) - MIDDLE_OFFSET.x, y=1.5, z=(z * TILE_SPACING) + (traversedTileCoord.z * TILE_SPACING) - MIDDLE_OFFSET.z}
+
+                            local direction = (3 + location + (tileGrid[traversedTileCoord.x][traversedTileCoord.z].rotation * 2)) % 8 + 5
+                            params.position.x = params.position.x - (SIDE_DELTA[math.floor((direction - 3) / 2)].x * 0.1 * TILE_SPACING)
+                            params.position.z = params.position.z - (SIDE_DELTA[math.floor((direction - 3) / 2)].z * 0.1 * TILE_SPACING)
+
+                            params.callback_owner = Global
+                            params.callback = "HaSDrawingSheepUnlock"
+
+                            sheepTileBag.shuffle()
+                            drawingSheepLock = true
+                            local newTile = sheepTileBag.takeObject(params)
+                            while drawingSheepLock do
+                                coroutine.yield(0)
+                            end
+                            if newTile.getVar('tokenName') == "Wolf" then
+                                Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='HaSScoreFlock', function_owner=nil, parameters={shepherd=shepherd}, delay=1.0})
+                            else
+                                Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.0})
+                            end
+                            return
+                        else
+                            allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG_DRAWING")
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end
+    gameNotification({"MESSAGE_SHEPHERD_FIELD_FULL"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+    HaSAddSheepToShepherd(shepherd)
+end
+
+function HaSAddSheepToTile(shep)
+    shepherd = shep
+    --startLuaCoroutine(self, 'HaSScoreFlockCoroutine')
+
+    startLuaCoroutine(self, 'HaSAddSheepToTileCoroutine')
+end
+
+--adds a sheep to the tile that the shepherd is on, if there is room
+function HaSAddSheepToTileCoroutine()
+    --no error checking for the shepherd. Assume that it is still in a legal position
+    local shepherdTileXIndex, shepherdTileZIndex, shepherdXPosition, shepherdZPosition = getFigureTileLocation(shepherd)
+    local tile = getObjectFromGUID(tileGrid[shepherdTileXIndex][shepherdTileZIndex].tile_guid)
+    local tileData = getTileDataForTile(tile)
+    local rotation = tileGrid[shepherdTileXIndex][shepherdTileZIndex].rotation
+    local shepherdClosestTilePosition = findClosestTilePosition(shepherdTileXIndex, shepherdTileZIndex, shepherdXPosition, shepherdZPosition)
+    for _, linkedOctants in pairs(tileData.linkedOctants) do
+        if table.contains(linkedOctants, shepherdClosestTilePosition) then
+            for _, location in pairs(linkedOctants) do
+                local x, z = getTileFeatureLocation(location, tile, rotation)
+                local occupied = false
+                local objs = getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).getObjects()
+                for _, object in ipairs(objs) do
+                    if table.contains(FOLLOWER_TYPES, object.getVar('figureName')) or table.contains(SPECIAL_FIGURE_TYPES, object.getVar('figureName')) or
+                    table.contains(NEUTRAL_FIGURE_TYPES, object.getVar('figureName')) or table.contains(SHEEP_TOKEN_TYPES, object.getVar('tokenName')) then
+                        local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(object)
+                        if xIndex == shepherdTileXIndex and zIndex == shepherdTileZIndex then
+                            if ((xPosition - x) * (xPosition - x)) + ((zPosition - z) * (zPosition - z)) < 0.1 then
+                                --debugMessage(2, "Too close to sheep location (" .. ((xPosition - x) * (xPosition - x)) + ((zPosition - z) * (zPosition - z)) .. ")")
+                                occupied = true
+                                break
+                            end
+                        end
+                    end
+                end
+                if not occupied then
+                    local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
+                    if sheepTileBag ~= nil then
+                        local params = {}
+                        params.position = {x=(x * TILE_SPACING) + (shepherdTileXIndex * TILE_SPACING) - MIDDLE_OFFSET.x, y=1.5, z=(z * TILE_SPACING) + (shepherdTileZIndex * TILE_SPACING) - MIDDLE_OFFSET.z}
+
+                        local direction = (3 + location + (tileGrid[shepherdTileXIndex][shepherdTileZIndex].rotation * 2)) % 8 + 5
+                        params.position.x = params.position.x - (SIDE_DELTA[math.floor((direction - 3) / 2)].x * 0.1 * TILE_SPACING)
+                        params.position.z = params.position.z - (SIDE_DELTA[math.floor((direction - 3) / 2)].z * 0.1 * TILE_SPACING)
+
+                        params.callback_owner = Global
+                        params.callback = "HaSDrawingSheepUnlock"
+
+                        sheepTileBag.shuffle()
+                        drawingSheepLock = true
+                        local newToken = sheepTileBag.takeObject(params)
+                        while drawingSheepLock do
+                            coroutine.yield(0)
+                        end
+                        if newToken.getVar('tokenName') == "Wolf" then
+                            Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='HaSScoreFlock', function_owner=nil, parameters={shepherd=shepherd}, delay=1.0})
+                        else
+                            Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.0})
+                        end
+                        return
+                    else
+                        allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG_DRAWING")
+                        return
+                    end
+                end
+            end
+        end
+    end
+    gameNotification({"MESSAGE_SHEPHERD_FIELD_FULL"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+    HaSAddSheepToShepherd(shepherd)
+end
+
+--if there is no room to add a sheep to a field, it will be placed on the shepherd's head
+function HaSAddSheepToShepherd(shepherd)
+    local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
+    if sheepTileBag ~= nil then
+        local params = {}
+        params.position = {shepherd.getPosition().x, shepherd.getPosition().y + 2, shepherd.getPosition().z}
+
+        params.callback_owner = Global
+        params.callback = "HaSDrawingSheepUnlock"
+
+        sheepTileBag.shuffle()
+        drawingSheepLock = true
+        local newTile = sheepTileBag.takeObject(params)
+        while drawingSheepLock do
+            coroutine.yield(0)
+        end
+        if newTile.getVar('tokenName') == "Wolf" then
+            Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='HaSScoreFlock', function_owner=nil, parameters={shepherd=shepherd}, delay=1.0})
+        else
+            Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.0})
+        end
+    else
+        allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG_DRAWING")
+    end
+end
+
+function HaSAddSheep(shepherd)
+    if controlPanelSettings['PnDDragon'] then
+        HaSAddSheepToTile(shepherd)
+    else
+        HaSAddSheepToField(shepherd)
+    end
+end
+
+function HaSAddSheepToFlockButton(object, sPlayer)
+    if checkGameButtonPrivileges(sPlayer) then
+        local shepherd = getObjectFromGUID(shepherdAwaitingAction)
+        clearArbitraryButtons()
+        HaSAddSheep(shepherd)
+    end
+end
+
+
+--unlocks the coroutine that drew the sheep, so that it can check the variables on the now-loaded token
+function HaSDrawingSheepUnlock()
+    drawingSheepLock = false
+end
+
+function HaSScoreFlock(params)
+    shepherd = params.shepherd
+    startLuaCoroutine(self, 'HaSScoreFlockCoroutine')
+end
+
+function HaSScoreFlockCoroutine()
+    local sheepTileBag = getObjectFromGUID(EXPANSION_BAGS['HnS'].contents['HnSSheepBag'].guid)
+    if sheepTileBag ~= nil then
+        local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(shepherd)
+        local closestTilePosition = findClosestTilePosition(xIndex, zIndex, xPosition, zPosition)
+        --only need a traversal level of 1, since we don't care about completed cities on the field
+        getFeatureComponents(xIndex, zIndex, closestTilePosition, 1, true)
+        local score = 0
+        local hasWolf = false
+
+        for _, token in ipairs(traversedSheepTokens) do
+            if token.getVar('tokenName') == 'Sheep' then
+                score = score + token.getVar('count')
+            elseif token.getVar('tokenName') == 'Wolf' then
+                hasWolf = true
+            end
+            sheepTileBag.putObject(token)
+        end
+        for _, feature in ipairs(traversedSpecialFeatures) do
+            if feature == 'Sheep' then
+                score = score + 1
+            end
+        end
+        if hasWolf then score = 0 end
+        for _, figure in ipairs(traversedSpecialFigures) do
+            if figure.getVar('figureName') == 'Shepherd' then
+                local winner
+                if score > 0 then winner = true else winner = false end
+                table.insert(removedFigures, {guid=figure.getGUID(), winner=winner})
+                if not hasWolf then
+                    allGameMessage({"MESSAGE_SCORE_SHEPHERD", {'{p1}', getPlayerOwnerName(figure.getVar('owner'))}, {'{n1}', score}}, player_color_tints[figure.getVar('owner')])
+                else
+                    allGameMessage({"MESSAGE_SHEPHERD_WOLF", {'{p1}', getPlayerOwnerName(figure.getVar('owner'))}}, player_color_tints[figure.getVar('owner')])
+                end
+                scorePoints(figure.getVar('owner'), 'Shepherd', score, true)
+                figure.setLock(false)
+                figure.use_gravity = false
+                figure.interactable = false
+                --raise the figure in the air
+                figure.setPositionSmooth({figure.getPosition().x, figure.getPosition().y + 2.5, figure.getPosition().z}, false, false)
+            end
+        end
+        if showMarkers == 'Both' or showMarkers == 'Scoring' then
+            Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='HaSPraiseShepherds', function_owner=nil, parameters=nil, delay=0.9})
+        else
+            HaSReturnShepherds()
+        end
+    else
+        allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG")
+        nextState('next')
+    end
+    return 1
+end
+
+function HaSClearShepherdButtons()
+    if shepherdAwaitingAction ~= nil then
+        local shepherd = getObjectFromGUID(shepherdAwaitingAction)
+        shepherd.clearButtons()
+    end
+end
+
+
+function HaSPraiseShepherds()
+    --Slightly different code path if true
+    gReturningShepherds = true
+
+    startLuaCoroutine(self, 'praiseFiguresCoroutine')
+end
+
+function HaSReturnShepherds()
+    startLuaCoroutine(self, 'HaSReturnShepherdsCoroutine')
+end
+
+--send figures back to the player supply area (assuming that's where they were when the game started)
+function HaSReturnShepherdsCoroutine()
+    deleteMarkers()
+    for _, figure in ipairs(removedFigures) do
+        local figure_obj = getObjectFromGUID(figure.guid)
+        figure_obj.setLock(false)
+        figure_obj.use_gravity = true
+        figure_obj.interactable = true
+
+        if figurePositions[figure_obj.getVar('owner')] ~= nil and figurePositions[figure_obj.getVar('owner')][figure_obj.getGUID()] ~= nil and getObjectFromGUID(figurepad_GUIDs[figure_obj.getVar('owner')]) ~= nil then
+            local figurePad = getObjectFromGUID(figurepad_GUIDs[figure_obj.getVar('owner')])
+            local x, z = rotateCoordinatesDegrees(figurePositions[figure_obj.getVar('owner')][figure_obj.getGUID()].x, figurePositions[figure_obj.getVar('owner')][figure_obj.getGUID()].z, -figurePad.getRotation().y)
+            figure_obj.setLock(false)
+            figure_obj.setPositionSmooth({x = figurePad.getPosition().x + x, y = figurePad.getPosition().y + 1, z = figurePad.getPosition().z + z}, false, false)
+            figure_obj.setRotationSmooth({x=0, y=figurePad.getRotation().y, z=0})
+        else
+            allErrorMessage("Warning: " .. figure_obj.getName() .. " doesn't have a home and must be returned manually", activePlayers[currentPlayer])
+        end
+        coroutine.yield(0)
+    end
+    removedFigures = {}
+
+    nextState('next')
+    return 1
+end
+
+
+function HaSCheckTileForHill()
+    if not controlPanelSettings['HnSHills'] then
+        return false
+    end
+
+    local newTile = getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid)
+    local newTileData = getTileDataForTile(newTile)
+    --put another tile underneath it
+    local specialFeatures = newTileData.specialFeatures
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Hill" then
+                local buriedTile_obj = nil
+                if buriedTile == nil then
+                    local drawPile = getObjectFromGUID(tileStack_GUID)
+                    if drawPile ~= nil then
+                        local params = {}
+                        params.position = {newTile.getPosition().x, newTile.getPosition().y + 1, newTile.getPosition().z}
+                        params.rotation = {0, 180, 180}
+                        buriedTile_obj = drawPile.takeObject(params)
+                        buriedTile = buriedTile_obj.getGUID()
+                    elseif finalTile_GUID ~= nil then
+                        buriedTile = finalTile_GUID
+                        buriedTile_obj = getObjectFromGUID(buriedTile)
+                        local position = {newTile.getPosition().x, newTile.getPosition().y + 1, newTile.getPosition().z}
+                        buriedTile_obj.setPositionSmooth(position)
+                        finalTile_GUID = nil
+                    else
+                        allErrorMessage(({"MESSAGE_HILL_WARNING_NO_TILESTACK"}))
+                        return false
+                    end
+                else
+                    buriedTile_obj = getObjectFromGUID(buriedTile)
+                end
+
+                buriedTile_obj.interactable = false
+                newTile.use_gravity = false
+                newTile.interactable = false
+                newTile.setPositionSmooth({newTile.getPosition().x, newTile.getPosition().y + 2, newTile.getPosition().z}, false, false)
+                Timer.create({identifier=newTile.getGUID() .. os.clock(), function_name='HaSFreezeFloatingHillTile', function_owner=nil, parameters={tile=newTile, buriedTile=buriedTile_obj}, delay=0.8})
+                return true
+            end
+        end
+    end
+    return false
+end
+
+--the next 3 functions use Timers to create a sequence to allow for a tile to be buried underneath
+
+--locks the tile for a moment to wait for the tile to be buried
+function HaSFreezeFloatingHillTile(param)
+    local tile = param.tile
+    local buriedTile = param.buriedTile
+    tile.setLock(true)
+    Timer.create({identifier=tile.getGUID() .. os.clock(), function_name='HaSUnfreezeFloatingHillTile', function_owner=nil, parameters={tile=tile, buriedTile=buriedTile}, delay=0.5})
+end
+
+--unlock the tile and wait for it to fall back down
+function HaSUnfreezeFloatingHillTile(param)
+    local tile = param.tile
+    local buriedTile = param.buriedTile
+    tile.use_gravity = true
+    tile.setLock(false)
+    Timer.create({identifier=tile.getGUID() .. os.clock(), function_name='HaSFinishHillTile', function_owner=nil, parameters={tile=tile, buriedTile=buriedTile}, delay=0.8})
+end
+
+--lock the tile and other post tile actions
+function HaSFinishHillTile(param)
+    local tile = param.tile
+    local buriedTile = param.buriedTile
+    tile.interactable = true
+    buriedTile.interactable = true
+    if AUTOLOCK then
+        buriedTile.setLock(true)
+        tile.setLock(true)
+    end
+    AITileBuried(buriedTile)
+    return nextState('next')
+end
+
+--Restore any saved data from HaS expansion
+function HaSLoadData(saved_data)
+    shepherdAwaitingAction = saved_data.shepherdAwaitingAction
+end
+
+--Save data from HaS expansion
+function HaSSaveData(saved_data)
+    saved_data.shepherdAwaitingAction = shepherdAwaitingAction
+end

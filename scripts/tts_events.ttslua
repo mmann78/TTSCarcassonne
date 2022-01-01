@@ -31,6 +31,7 @@ function onload(save_state)
         KnRBLoadData(saved_data)
         PnDLoadData(saved_data)
         towerLoadData(saved_data)
+        HaSLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
         flierDie_GUID = saved_data.flierDie_GUID
         lastPlacedTileX = saved_data.lastPlacedTileX
@@ -59,7 +60,6 @@ function onload(save_state)
         carcassonneFigures = saved_data.carcassonneFigures
         wofPigPosition = saved_data.wofPigPosition
         currentMiniTurn = saved_data.currentMiniTurn
-        shepherdAwaitingAction = saved_data.shepherdAwaitingAction
         buriedTile = saved_data.buriedTile
         flier = saved_data.flier
         flierOffset = saved_data.flierOffset
@@ -182,7 +182,6 @@ function onSave()
         scoreSummary = scoreSummary,
         score_counter_guids = score_counter_guids,
         scores = scores,
-        shepherdAwaitingAction = shepherdAwaitingAction,
         showMarkers = showMarkers,
         tileGrid = tileGrid,
         tilesRemaining = tilesRemaining,
@@ -196,6 +195,7 @@ function onSave()
     KnRBSaveData(toSave)
     PnDSaveData(toSave)
     towerLoadData(toSave)
+    HaSSaveData(toSave)
     return jsonencode(toSave)
 end
 

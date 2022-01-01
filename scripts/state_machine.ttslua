@@ -287,14 +287,18 @@ function playerStateHandler()
         buriedTile = nil
         PnDClearAddedTileFeature()
         currentPlayerAbbot = nil
-        shepherdAwaitingAction = nil
+        HaSShepherdClearAddedTileFeature()
         TnBBuilderClearAddedTileFeature()
         return nextState('next')
     elseif turnState == 'check added tile special figure extension' then
         checkAddedTileSpecialFigureExtensions()
         return nextState('next')
     elseif turnState == 'check added tile feature - hill' then
-        return checkTileForHill()
+        if not HaSCheckTileForHill() then
+            return nextState('next')
+        else
+            return
+        end
     elseif turnState == 'check added tile feature - wheel of fortune' then
         return checkTileForWheel()
     elseif turnState == 'check added tile feature - wheel of fortune - plague' then
@@ -404,12 +408,8 @@ function playerStateHandler()
         return nextState('next')
     elseif turnState == 'initialize shepherd' then
         clearFigureOptions()
-        local shepherd = getObjectFromGUID(shepherdAwaitingAction)
-        if controlPanelSettings['PnDDragon'] then
-            return addSheepToTile(shepherd)
-        else
-            return addSheepToField(shepherd)
-        end
+        HaSAddSheep(getObjectFromGUID(shepherdAwaitingAction))
+        return
     elseif turnState == 'initialize shepherd - finish' then
         shepherdAwaitingAction = nil
         return nextState('next')
@@ -461,8 +461,7 @@ function playerStateHandler()
         gameNotification({"MESSAGE_PHANTOM_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         return displayPhantomButtons()
     elseif turnState == 'post figure event - prompt shepherd' then
-        if shepherdAwaitingAction ~= nil then
-            promptShepherd()
+        if HaSPromptShepherd() then
             return
         else
             return nextState('next')
