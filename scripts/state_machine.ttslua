@@ -326,13 +326,14 @@ function playerStateHandler()
         PnDCheckTileForMagicPortal(lastPlacedTileX, lastPlacedTileZ)
         return nextState('next')
     elseif turnState == 'check added tile feature - gold' then
-        return checkTileForGold()
+        goldCheckTileForGold()
+        return nextState('next')
     elseif turnState == 'place gold on tile' then
-        addGoldToTile(lastPlacedTileX, lastPlacedTileZ)
+        goldAddGoldToTile(lastPlacedTileX, lastPlacedTileZ)
         nextState('next')
     elseif turnState == 'awaiting gold placement' then
         gameNotification({"MESSAGE_GOLD_MINES_PLACE_GOLD_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-        return displayGoldButtons()
+        return goldDisplayButtons()
     elseif turnState == 'awaiting figure decision' then
         gameNotification({"MESSAGE_FIGURE_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
 
@@ -481,8 +482,8 @@ function playerStateHandler()
     elseif turnState == 'post scoring events' then
         return nextState('next')
     elseif turnState == 'reward gold' then
-        tempGoldCounts = getGold()
-        return rewardGold()
+        tempGoldCounts = goldGetGold()
+        return goldRewardGold()
     elseif turnState == 'replace finished wagons' then
         if AnMReplaceFinishedWagons() then
             return nextState('next')

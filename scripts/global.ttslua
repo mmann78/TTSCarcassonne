@@ -508,6 +508,8 @@ controlPanelSettings = {
 
 #include !\TTSCarcassonne\scripts\expansion_ferries
 
+#include !\TTSCarcassonne\scripts\expansion_goldmines
+
 #include !\TTSCarcassonne\scripts\state_machine
 
 #include !\TTSCarcassonne\scripts\setup_game

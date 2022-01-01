@@ -251,9 +251,7 @@ function initializeScoreSummary()
         HaSInitializeScoreSummary(scoreSummary[player_color])
         PnDInitializeScoreSummary(scoreSummary[player_color])
         KnRBInitializeScoreSummary(scoreSummary[player_color])
-        if controlPanelSettings['GoldminesGold'] then
-            scoreSummary[player_color]['Gold'] = 0
-        end
+        goldInitializeScoreSummary(scoreSummary[player_color])
         towerInitializeScoreSummary(scoreSummary[player_color])
         if pigIsEnabled() then
             scoreSummary[player_color]['Wheel'] = 0
@@ -702,106 +700,6 @@ function rewardCrownSpaces()
     return nextState('next')
 end
 
-function checkTileForGold()
-    if controlPanelSettings['GoldminesGold'] then
-        local tileData = getTileDataForTile(getObjectFromGUID(tileGrid[lastPlacedTileX][lastPlacedTileZ].tile_guid))
-        local specialFeatures = tileData.specialFeatures
-        if specialFeatures ~= nil then
-            for _, specialFeature in ipairs(specialFeatures) do
-                if specialFeature[1] == 'Gold' then
-                    return nextState('has gold')
-                end
-            end
-        end
-    end
-    return nextState('next')
-end
-
-function addGoldToTile(xIndex, zIndex)
-    local goldbag = getObjectFromGUID(EXPANSION_BAGS['Goldmines'].contents['GoldminesGold'].guid)
-    if goldbag ~= nil then
-        local xDestination = (xIndex * TILE_SPACING) - MIDDLE_OFFSET.x
-        local zDestination = (zIndex * TILE_SPACING) - MIDDLE_OFFSET.z
-
-        local params = {}
-        params.position = {xDestination, 1.5, zDestination}
-        goldbag.takeObject(params)
-    else
-
-    end
-end
-
-function displayGoldButtons()
-    for i, offset in ipairs(DIAGONAL_DELTA) do
-        local newX = lastPlacedTileX + offset.x
-        local newZ = lastPlacedTileZ + offset.z
-        if tileGridOccupied(newX, newZ) then
-            local placeGoldButtonParam = {
-               index = i, label = translate("BUTTON_LABEL_PLACE_GOLD"), click_function = 'placeGoldButton' .. i,
-               position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=0}, width = 800, height=600, font_size = 200, function_owner = nil
-            }
-            createNormalizedArbitraryButton({x=-newX * TILE_SPACING + MIDDLE_OFFSET.x, y=TABLE_SURFACE_Y, z=newZ * TILE_SPACING - MIDDLE_OFFSET.z}, placeGoldButtonParam, false)
-        end
-    end
-end
-
-function placeGoldButton1(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(1)
-    end
-end
-
-function placeGoldButton2(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(2)
-    end
-end
-
-function placeGoldButton3(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(3)
-    end
-end
-
-function placeGoldButton4(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(4)
-    end
-end
-
-function placeGoldButton5(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(5)
-    end
-end
-
-function placeGoldButton6(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(6)
-    end
-end
-
-function placeGoldButton7(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(7)
-    end
-end
-
-function placeGoldButton8(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        placeGold(8)
-    end
-end
-
-function placeGold(i)
-    clearArbitraryButtons()
-
-    local xIndex = lastPlacedTileX + DIAGONAL_DELTA[i].x
-    local zIndex = lastPlacedTileZ + DIAGONAL_DELTA[i].z
-    addGoldToTile(xIndex, zIndex)
-    nextState('next')
-
-end
 
 --check for special actions to take when the latest tile has added to or finished a feature
 function checkAddedTileFeatureExtensions()
@@ -1461,52 +1359,9 @@ function scoreFeatures()
         if TnBScoreFeatures('Cloth Token') then
             return
         end
-        if controlPanelSettings['GoldminesGold'] then
-            --find the highest count for this token
-            for _, player in ipairs(activePlayers) do
-                local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player]).getObjects()
-                local playerNumGold = 0
-                for _, obj in ipairs(playerPossessions) do
-                    if obj.getVar('figureName') == GOLD_BAR_NAME then
-                        local quantity = obj.getQuantity()
-                        if quantity == -1 then quantity = 1 end
-                        playerNumGold = playerNumGold + quantity
-                        table.insert(removedFigures, {guid=obj.getGUID(), winner=true})
-                        obj.setLock(false)
-                        obj.use_gravity = false
-                        obj.interactable = false
-                        --raise the token in the air
-                        obj.setPositionSmooth({obj.getPosition().x, obj.getPosition().y + 2.5, obj.getPosition().z}, false, false)
-                    end
-                end
-                if playerNumGold > 0 then
-                    local goldPoints
-                    local goldMultiplier
-                    if playerNumGold > 9 then
-                        goldMultiplier =  4
-                    elseif playerNumGold > 6 then
-                        goldMultiplier = 3
-                    elseif playerNumGold > 3 then
-                        goldMultiplier = 2
-                    else
-                        goldMultiplier = 1
-                    end
-                    allGameMessage({"MESSAGE_SCORE_GOLD_MINES", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', playerNumGold * goldMultiplier}, {'{n2}', playerNumGold}, {'{n3}', goldMultiplier}}, player_color_tints[player])
-                    scorePoints(player, 'Gold', playerNumGold * goldMultiplier)
-                    traversedFeaturePositions = {}
-
-                    if showMarkers == 'Both' or showMarkers == 'Scoring' then
-                        praiseFiguresCameraFocus(true)
-                        Timer.create({identifier=os.clock(), function_name='praiseFigures', function_owner=nil, parameters=nil, delay=0.9})
-                    else
-                        returnFigures()
-                    end
-                    return
-                end
-            end
+        if goldScoreFeatures() then
+            return
         end
-
-
         resetTraversal()
         KnRBScoreFeature()
     end
@@ -1567,99 +1422,6 @@ function scoreFeatures()
         return nextState('next')
     end
 end
-
-function rewardGold()
-    if currentMiniTurn == nil then
-        currentMiniTurn = currentPlayer
-    else
-        currentMiniTurn = currentMiniTurn + 1
-    end
-    local test = 0
-    if scoringRewards['Gold'] ~= nil then
-        while true do
-            if currentMiniTurn > #activePlayers then currentMiniTurn = 1 end
-            local eligiblePlayers = {}
-            eligibleGold = {}
-            for gold_guid, players in pairs(scoringRewards['Gold']) do
-                for _, player in ipairs(players) do
-                    if not table.contains(eligiblePlayers, player) then
-                        table.insert(eligiblePlayers, player)
-                    end
-                end
-                if table.contains(players, activePlayers[currentMiniTurn]) then
-                    table.insert(eligibleGold, gold_guid)
-                end
-            end
-            if #eligibleGold == 1 or (#eligibleGold > 0 and #eligiblePlayers == 1) then
-                allGameMessage({"MESSAGE_GOLD_MINES_GOLD_AWARDED", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-                return giveGold(eligibleGold[1], activePlayers[currentMiniTurn])
-            elseif #eligibleGold > 1 then
-                allGameMessage({"MESSAGE_GOLD_MINES_TAKE_GOLD_PROMPT", {'{p1}', getPlayerOwnerName(activePlayers[currentMiniTurn])}}, player_color_tints[activePlayers[currentMiniTurn]], activePlayers[currentMiniTurn])
-                return promptGoldChoice(eligibleGold)
-            end
-            local count = 0
-            for _, gold in pairs(scoringRewards['Gold']) do
-                if gold ~= nil then
-                    count = count + 1
-                end
-            end
-            currentMiniTurn = currentMiniTurn + 1
-            if count == 0 then break end
-        end
-    end
-    currentMiniTurn = nil
-    scoringRewards['Gold'] = nil
-    return nextState('next')
-end
-
-function promptGoldChoice()
-    for _, gold in ipairs(eligibleGold) do
-        local goldButtonParam = {
-           index = 1, label = translate("BUTTON_LABEL_TAKE_GOLD"), click_function = 'takeGoldButton',
-           position = {x=0, y=FLOATING_BUTTON_HEIGHT_LOW, z=1.0}, width = 1100, height=600, font_size = 200, function_owner = nil
-        }
-        createNormalizedButton(getObjectFromGUID(gold), goldButtonParam, true)
-    end
-end
-
-function takeGoldButton(object, sPlayer)
-    if checkGameButtonPrivileges(sPlayer) then
-        for _, gold in pairs(eligibleGold) do
-            getObjectFromGUID(gold).clearButtons()
-        end
-        return giveGold(object.getGUID(), sPlayer)
-    end
-end
-
-function getGold()
-    local gold = {}
-    for _, player_color in ipairs(activePlayers) do
-        local playerPossessions = getObjectFromGUID(playerPossessionScriptingZones[player_color]).getObjects()
-        local playerNumGold = 0
-        for _, obj in ipairs(playerPossessions) do
-            if obj.getVar('figureName') == GOLD_BAR_NAME then
-                playerNumGold = playerNumGold + 1
-            end
-        end
-        gold[player_color] = playerNumGold
-    end
-    return gold
-end
-
-function giveGold(gold, player_color)
-    local tradeGoodPile
-    local x, z = rotateCoordinates(PLAYER_POSSESSION_POSITIONS['Gold'].x - PLAYER_POSSESSION_SPACING * tempGoldCounts[player_color], PLAYER_POSSESSION_POSITIONS['Gold'].z, player_possession_areas[player_color].rotation)
-    x = player_possession_areas[activePlayers[currentMiniTurn]].x + x
-    z = player_possession_areas[activePlayers[currentMiniTurn]].z + z
-
-    getObjectFromGUID(gold).setPositionSmooth({x, 2, z})
-    getObjectFromGUID(gold).setRotationSmooth({0, player_possession_areas[activePlayers[currentMiniTurn]].rotation * -90 + 90, 0})
-
-    tempGoldCounts[player_color] = tempGoldCounts[player_color] + 1
-    scoringRewards['Gold'][gold] = nil
-    return rewardGold()
-end
-
 
 --focus the camera on the currently praised figures
 --params:
@@ -1825,11 +1587,8 @@ function returnFiguresCoroutine()
             KnRBReturnFigure(figure_obj)
         elseif TnBIsFigureReturned(figure_obj) then
             TnBReturnFigure(figure_obj)
-        elseif figure_obj.getVar('figureName') == GOLD_BAR_NAME then
-            local container = getObjectFromGUID(EXPANSION_BAGS['Goldmines'].contents['GoldminesGold'].guid)
-            if container ~= nil then
-                container.putObject(figure_obj)
-            end
+        elseif goldIsFigureReturned(figure_obj) then
+            goldReturnFigure(figure_obj)
         else
             if figurePositions[figure_obj.getVar('owner')] ~= nil and figurePositions[figure_obj.getVar('owner')][figure_obj.getGUID()] ~= nil and getObjectFromGUID(figurepad_GUIDs[figure_obj.getVar('owner')]) ~= nil then
                 local figurePad = getObjectFromGUID(figurepad_GUIDs[figure_obj.getVar('owner')])
