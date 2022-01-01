@@ -640,11 +640,9 @@ end
 function getLinkedQuadrants(tile)
     if tile ~= nil then
         if tile.guid ~= nil then
-            if ferriesLinkedQuadrants ~= nil then
-                local t = ferriesLinkedQuadrants[tile.guid]
-                if t ~= nil then
-                    return t
-                end
+            local ferry = ferryGetLinkedQuadrants(tile.guid)
+            if ferry ~= nil then
+                return ferry
             end
         end
     end

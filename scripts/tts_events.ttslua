@@ -23,8 +23,6 @@ function onload(save_state)
         controlPanelSettings = saved_data.controlPanelSettings
         showMarkers = saved_data.showMarkers
         tileGrid = saved_data.tileGrid
-        ferriesLinkedQuadrants = saved_data.ferriesLinkedQuadrants
-        placedFerries = saved_data.placedFerries
         riverLoadData(saved_data)
         AnMLoadData(saved_data)
         TnBLoadData(saved_data)
@@ -33,6 +31,7 @@ function onload(save_state)
         towerLoadData(saved_data)
         HaSLoadData(saved_data)
         flierLoadData(saved_data)
+        ferryLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
         lastPlacedTileX = saved_data.lastPlacedTileX
         lastPlacedTileZ = saved_data.lastPlacedTileZ
@@ -156,7 +155,6 @@ function onSave()
         featureIndex = featureIndex,
         featureList = featureList,
         featureMarker_GUIDs = featureMarker_GUIDs,
-        ferriesLinkedQuadrants = ferriesLinkedQuadrants,
         figurePositions = figurePositions,
         figurepad_GUIDs = figurepad_GUIDs,
         finalTile_GUID = finalTile_GUID,
@@ -165,7 +163,6 @@ function onSave()
         lastPlacedTileX = lastPlacedTileX,
         lastPlacedTileZ = lastPlacedTileZ,
         linkedFeatures = linkedFeatures,
-        placedFerries = placedFerries,
         playerPossessionScriptingZones = playerPossessionScriptingZones,
         player_color_tints = player_color_tints,
         player_possession_areas = player_possession_areas,
@@ -188,6 +185,7 @@ function onSave()
     towerLoadData(toSave)
     HaSSaveData(toSave)
     flierSaveData(toSave)
+    ferrySaveData(toSave)
     return jsonencode(toSave)
 end
 

@@ -270,9 +270,6 @@ tileGrid = {}
 lastPlacedTileX = nil
 lastPlacedTileZ = nil
 
-placedFerries = {}
-ferriesLinkedQuadrants = {}
-
 --the next available featureNum that can be used for featureList. This is incremented for each new feature. Discarded featureNums are not recycled.
 featureIndex = 1
 
@@ -508,6 +505,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\scripts\expansion_tower
 
 #include !\TTSCarcassonne\scripts\expansion_flier
+
+#include !\TTSCarcassonne\scripts\expansion_ferries
 
 #include !\TTSCarcassonne\scripts\state_machine
 
