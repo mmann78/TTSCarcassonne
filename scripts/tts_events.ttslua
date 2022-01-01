@@ -32,8 +32,8 @@ function onload(save_state)
         PnDLoadData(saved_data)
         towerLoadData(saved_data)
         HaSLoadData(saved_data)
+        flierLoadData(saved_data)
         finalTile_GUID = saved_data.finalTile_GUID
-        flierDie_GUID = saved_data.flierDie_GUID
         lastPlacedTileX = saved_data.lastPlacedTileX
         lastPlacedTileZ = saved_data.lastPlacedTileZ
         lastPlacedPlayerTiles = saved_data.lastPlacedPlayerTiles
@@ -61,10 +61,6 @@ function onload(save_state)
         wofPigPosition = saved_data.wofPigPosition
         currentMiniTurn = saved_data.currentMiniTurn
         buriedTile = saved_data.buriedTile
-        flier = saved_data.flier
-        flierOffset = saved_data.flierOffset
-        flierDirection = saved_data.flierDirection
-        hasAlreadyUsedFlier = saved_data.hasAlreadyUsedFlier
         earnedPointsThisTile = saved_data.earnedPointsThisTile
         removedFigures = saved_data.removedFigures
         --if script was in the middle of showing feature markers when the game was saved, delete them after loading
@@ -164,12 +160,7 @@ function onSave()
         figurePositions = figurePositions,
         figurepad_GUIDs = figurepad_GUIDs,
         finalTile_GUID = finalTile_GUID,
-        flier = flier,
-        flierDie_GUID = flierDie_GUID,
-        flierDirection = flierDirection,
-        flierOffset = flierOffset,
         handColor = handColor,
-        hasAlreadyUsedFlier = hasAlreadyUsedFlier,
         lastPlacedPlayerTiles = lastPlacedPlayerTiles,
         lastPlacedTileX = lastPlacedTileX,
         lastPlacedTileZ = lastPlacedTileZ,
@@ -196,6 +187,7 @@ function onSave()
     PnDSaveData(toSave)
     towerLoadData(toSave)
     HaSSaveData(toSave)
+    flierSaveData(toSave)
     return jsonencode(toSave)
 end
 
@@ -292,24 +284,6 @@ function onObjectDestroyed(dying_object)
     end
 end
 
---called when the flier die is rolled. Checks to make sure the last player to pick it up was the player eligible to roll
-function onFlierDiceRolled(params)
-    local player = params.sPlayer
-    --Don't do anything if the player that rolled the die is not the current player
-    if (currentMiniTurn ~= nil and (player ~= activePlayers[currentMiniTurn] and player ~= getCurrentPlayerOwner())) or
-        (currentMiniTurn == nil and (player ~= activePlayers[currentPlayer] and player ~= getCurrentPlayerOwner())) then
-        playerErrorMessage({"MESSAGE_FLIER_WRONG_PLAYER_ROLLED"}, player)
-        return
-    end
-    --Don't do anything unless it is a turnState where a player would be expected to roll the die
-    if turnState ~= 'wait for flier roll' and turnState ~= 'wait for flier roll - phantom' then return end
-    local dieValue = getObjectFromGUID(flierDie_GUID).getValue()
-    if dieValue > 3 then dieValue = 7 - dieValue end
-    flierOffset = {x=DIAGONAL_DELTA[flierDirection].x * dieValue, z=DIAGONAL_DELTA[flierDirection].z * dieValue}
-    --debugMessage(1, "Flier direction: " .. flierDirection .. " Flier destination offset: x: " .. flierOffset.x .. " z: " .. flierOffset.z)
-    allGameMessage({"MESSAGE_FLIER_DIE_ROLL", {'{p1}', activePlayers[currentPlayer]}, {'{n1}', dieValue}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
-    return nextState('die rolled')
-end
 
 -- Activates whenever any object is dropped
 function onObjectDrop(player, droppedObject)

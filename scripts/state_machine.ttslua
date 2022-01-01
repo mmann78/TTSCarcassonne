@@ -263,7 +263,7 @@ function playerStateHandler()
             allGameMessage({"MESSAGE_STATE_NEW_TURN_CONTROL", {'{c1}', translate(activePlayers[currentPlayer])}, {'{p1}', stringToBracketedHex(getPlayerOwner(activePlayers[currentPlayer])) .. getPlayerOwnerName(activePlayers[currentPlayer]) .. stringToBracketedHex(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]], nil)
         end
         TnBBuilderClearTakenBuilderTile()
-        hasAlreadyUsedFlier = false
+        flierBeginTurn()
         confirmationDisplayed = false
         AnMBeginTurn()
         lastPlacedTileX = nil
@@ -355,32 +355,18 @@ function playerStateHandler()
         return
     elseif turnState == 'wait for flier roll' or turnState == 'wait for flier roll - phantom' then
         clearFigureOptions()
-        for i=1, 3 do
-            local possibleOffset = {x=DIAGONAL_DELTA[flierDirection].x * i, z=DIAGONAL_DELTA[flierDirection].z * i}
-            if tileGridOccupied(lastPlacedTileX + possibleOffset.x, lastPlacedTileZ + possibleOffset.z) then
-                local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + possibleOffset.x][lastPlacedTileZ + possibleOffset.z].tile_guid)
-                if possibleTile ~= nil then
-                    possibleTile.highlightOn({1,1,1})
-                end
-            end
-        end
+        flierHighlightTileOn()
         clearArbitraryButtons()
         gameNotification({"MESSAGE_FLIER_DIE_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         return
     elseif turnState == 'check flier destination' or turnState == 'check flier destination - phantom' then
-        return checkFlierDestination()
-    elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
-        for i=1, 3 do
-            local possibleOffset = {x=DIAGONAL_DELTA[flierDirection].x * i, z=DIAGONAL_DELTA[flierDirection].z * i}
-            if not (possibleOffset.x == flierOffset.x and possibleOffset.z == flierOffset.z) then
-                if tileGridOccupied(lastPlacedTileX + possibleOffset.x, lastPlacedTileZ + possibleOffset.z) then
-                    local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + possibleOffset.x][lastPlacedTileZ + possibleOffset.z].tile_guid)
-                    if possibleTile ~= nil then
-                        possibleTile.highlightOff()
-                    end
-                end
-            end
+        if flierCheckDestination() then
+            nextState('feature available')
+        else
+            return nextState('feature unavailable')
         end
+    elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
+        flierHighlightTileOff()
         gameNotification({"MESSAGE_FLIER_PROMPT"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         return
     elseif turnState == 'prompt tower capture' then
@@ -416,15 +402,7 @@ function playerStateHandler()
     elseif turnState == 'seduce knight' then
         return returnFigures()
     elseif turnState == 'return flier' or turnState == 'return flier - phantom' then
-        for i=1, 3 do
-            local possibleOffset = {x=DIAGONAL_DELTA[flierDirection].x * i, z=DIAGONAL_DELTA[flierDirection].z * i}
-            if tileGridOccupied(lastPlacedTileX + possibleOffset.x, lastPlacedTileZ + possibleOffset.z) then
-                local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + possibleOffset.x][lastPlacedTileZ + possibleOffset.z].tile_guid)
-                if possibleTile ~= nil then
-                    possibleTile.highlightOff()
-                end
-            end
-        end
+        flierHighlightTileOff()
         return returnFigures()
     elseif turnState == 'post figure events' or turnState == 'post phantom events' then
         clearFigureOptions()

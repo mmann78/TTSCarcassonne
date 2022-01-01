@@ -1355,12 +1355,7 @@ end
 
 function clearFigureOptions()
     clearArbitraryButtons(true)
-    if flierOffset ~= nil and lastPlacedTileX ~= nil and tileGridOccupied(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
-        local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + flierOffset.x][lastPlacedTileZ + flierOffset.z].tile_guid)
-        if possibleTile ~= nil then
-            possibleTile.highlightOff()
-        end
-    end
+    flierClear()
     PnDFairyClear()
 end
 
@@ -1411,51 +1406,6 @@ function highlightLastPlacedTiles()
     end
 end
 
-function checkFlierDestination()
-    if tileGridOccupied(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
-        if PnDIsDragonOnTile(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
-            allGameMessage({"MESSAGE_FLIER_LANDED_ON_DRAGON"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-            table.insert(removedFigures, {guid=flier, winner=false})
-            return nextState('feature unavailable')
-        end
-        resetTraversal()
-        local destinationTile = getObjectFromGUID(tileGrid[lastPlacedTileX + flierOffset.x][lastPlacedTileZ + flierOffset.z].tile_guid)
-        local destinationTileData = getTileDataForTile(destinationTile)
-        local hasIncompleteFeature = false
-        for i=1, 12 do
-            if getTileFeatureName(destinationTile, i) == 'City' or getTileFeatureName(destinationTile, i) == 'Road' then --fields are not valid destinations
-                if getObjectFromGUID(flier).getVar('figureName') ~= 'Mayor' or getTileFeatureName(destinationTile, i) == 'City' then
-                    if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, i, 1, false) > 0 then
-                        hasIncompleteFeature = true
-                    end
-                end
-            end
-        end
-        local specialFeatures = destinationTileData.specialFeatures
-        for j, feature in pairs(specialFeatures) do
-            if (feature[1] == 'Cloister' or feature[1] == 'Abbey') and getObjectFromGUID(flier).getVar('figureName') ~= 'Mayor' then
-                if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, j + 12, 1, false) > 0 then
-                    hasIncompleteFeature = true
-                end
-            end
-            if feature[1] == 'Garden' and getObjectFromGUID(flier).getVar('figureName') == 'Abbot' then
-                if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, j + 12, 1, false) > 0 then
-                    hasIncompleteFeature = true
-                end
-            end
-        end
-        if hasIncompleteFeature then
-            return nextState('feature available')
-        else
-            allGameMessage({"MESSAGE_FLIER_NO_DESTINATION"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-        end
-    else
-        allGameMessage({"MESSAGE_FLIER_NO_TILE"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
-    end
-
-    table.insert(removedFigures, {guid=flier, winner=false})
-    return nextState('feature unavailable')
-end
 
 function scoreFeatures()
     scoring = true

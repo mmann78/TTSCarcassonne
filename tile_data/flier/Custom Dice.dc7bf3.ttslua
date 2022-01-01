@@ -17,7 +17,7 @@ end
 
 function onCollisionStay(collision_info)
     if loaded and self.resting then
-        Global.call('onFlierDiceRolled', {sPlayer = m_sLastPlayer})
+        Global.call('flierOnFlierDiceRolled', {sPlayer = m_sLastPlayer})
     end
 end
 

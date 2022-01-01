@@ -28,7 +28,7 @@ function showHintMarkers()
                     showLocationMarkers(pickedUpObject, locationMarkers)
                 end
             elseif turnState == 'awaiting flier decision' or turnState == 'awaiting flier decision - phantom' then
-                showFlierFeatureMarkers(pickedUpObject)
+                flierShowFeatureMarkers(pickedUpObject)
             elseif turnState == 'awaiting phantom decision' then
                 showFigureMarkers(pickedUpObject)
             elseif turnState == 'prompt moving to carcassonne' then
@@ -218,44 +218,6 @@ function showFigureMarkers(newFigure)
                         return 1
                     end
                 end
-            end
-        end
-    end
-
-    showLocationMarkers(newFigure, locationMarkers)
-    return 1
-end
-
-function showFlierFeatureMarkers(newFigure)
-    local xIndex = lastPlacedTileX + flierOffset.x
-    local zIndex = lastPlacedTileZ + flierOffset.z
-    local locationMarkers = {}
-    locationMarkers[xIndex] = {}
-    locationMarkers[xIndex][zIndex] = {}
-
-    local featuresToMark = {}
-
-    local positionsToVisit = { }
-
-    local tileData = getTileDataForTile(getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid))
-    local specialFeatures = tileData.specialFeatures
-    if specialFeatures ~= nil then
-        for specialFeatureNum, specialFeature in pairs(specialFeatures) do
-            if specialFeature[3] ~= nil then
-                table.insert(positionsToVisit, specialFeatureNum+12)
-            end
-        end
-    end
-    for featureMapPosition=1, 12 do
-        table.insert(positionsToVisit, featureMapPosition)
-    end
-
-    for _, featureMapPosition in ipairs(positionsToVisit) do
-        local featureNum = getFeatureNumAt(xIndex, zIndex, featureMapPosition)
-        if featureNum ~= nil and featuresToMark[featureNum] == nil then
-            if isValidFlierLocation(newFigure, featureNum, false) then
-                setOrUpdateLocationMarker(locationMarkers, xIndex, zIndex, featureMapPosition, 0)
-                featuresToMark[featureNum] = true
             end
         end
     end

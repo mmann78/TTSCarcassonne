@@ -1,0 +1,283 @@
+--Encapsulate the behavior of the Flier mini-expansion (flier)
+
+local flier = nil
+local flierOffset = nil
+local flierDirection = nil
+local hasAlreadyUsedFlier = false
+
+--The following neutral figures need to be tracked runtime
+flierDie_GUID = nil
+
+local flierFlier = {
+    width = 1.0,
+    use_snap_points = false,
+    object_params = {type = 'Custom_Dice', scale = {1.0, 1.0, 1.0}},
+    custom_object_params = {type=1, image = 'http://cloud-3.steamusercontent.com/ugc/1009311636238680991/7292CDD3CA4B7E2FB4F75B5BE315CC5A6EC7092C/'},
+    custom_script =
+[[m_sLastPlayer = nil
+loaded = false
+dieColliding = false
+diePickedUp = false
+
+function onLoad()
+loaded = true
+end
+
+function onCollisionEnter(collision_info)
+dieColliding = true
+end
+
+function onCollisionExit(collision_info)
+dieColliding = false
+end
+
+function onUpdate()
+if diePickedUp and dieColliding and loaded and self.resting and m_sLastPlayer ~= nil then
+    dieColliding = false
+    diePickedUp = false
+    Global.call('flierOnFlierDiceRolled', {sPlayer = m_sLastPlayer})
+end
+end
+
+function onPickedUp(player_color)
+diePickedUp = true
+m_sLastPlayer = player_color     --Remember last player who picked up the die
+end
+
+function getLastPlayerColor()
+return m_sLastPlayer
+end]]
+}
+
+
+--Player scoring data specific to expansion
+function flierInitializeAdditionalPlayerStats(player)
+
+end
+
+function flierPrepareNeutralItems(offset)
+    if controlPanelSettings['FlierFlier'] then
+        flierDie_GUID, offset = prepareNeutralItemHelper(flierFlier, offset)
+    end
+    return offset
+end
+
+function flierBeginTurn()
+    hasAlreadyUsedFlier = false
+end
+
+function flierCheckPlacement(newFigure, xIndex, zIndex, nameOfFeature)
+    flier = newFigure.getGUID()
+    local tileRotation = tileGrid[xIndex][zIndex].rotation
+    if string.sub(nameOfFeature,7,7) == 'W' then flierDirection = 8 else flierDirection = 1 end --assumed to be Flier-NW if it is not Flier-W
+    flierDirection = flierDirection + ((tileRotation - TILE_STANDARD_ROTATION) * 2)
+    if flierDirection > 8 then flierDirection = flierDirection - 8 end
+    if flierDirection < 1 then flierDirection = flierDirection + 8 end
+    allGameMessage({"MESSAGE_FLIER_PLACED", {'{c1}', newFigure.getDescription()}, {'{f1}', newFigure.getName()}}, player_color_tints[newFigure.getVar('owner')])
+    hasAlreadyUsedFlier = true
+end
+
+function flierIsLastDroppedObject()
+    local last = (flier == lastDroppedObject_GUID)
+    return last
+end
+
+function flierIsValidFigureLocation(newFigure)
+    if not controlPanelSettings['FlierFlier'] then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FLIER_DISABLED"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    if hasAlreadyUsedFlier then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FLIER_USAGE_EXCEEDED"}, activePlayers[currentPlayer]) end
+        return false
+    elseif table.contains(FOLLOWER_TYPES, newFigure.getVar('figureName')) then
+        return true
+    else
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FLIER_ILLEGAL_FIGURE"}, activePlayers[currentPlayer]) end
+        return false
+    end
+end
+
+function flierIsValidFlierLocationOffset(xIndex, zIndex)
+    local valid = (xIndex == lastPlacedTileX + flierOffset.x and zIndex == lastPlacedTileZ + flierOffset.z)
+    return valid
+end
+
+
+function flierisValidLocation(newFigure, featureNum, verbose)
+    local nameOfFeature = featureList[featureNum].nameOfFeature
+    local numOpenings = featureList[featureNum].numOpenings
+    if newFigure.getVar('figureName') == 'Abbot' and nameOfFeature ~= 'Garden' and nameOfFeature ~= 'Cloister' and nameOfFeature ~= 'Abbey' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_ABBOT"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    if newFigure.getVar('figureName') == 'Mayor' and nameOfFeature ~= 'City' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_MAYOR"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    if nameOfFeature ~= 'City' and nameOfFeature ~= 'Road' and nameOfFeature ~= 'Cloister' then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FLIER"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    if numOpenings == 0 then
+        if verbose then allErrorMessage({"MESSAGE_INVALID_LOCATION_FLIER_ALREADY_COMPLETE"}, activePlayers[currentPlayer]) end
+        return false
+    end
+    return true
+end
+
+function flierHighlightTileOn()
+    for i=1, 3 do
+        local possibleOffset = {x=DIAGONAL_DELTA[flierDirection].x * i, z=DIAGONAL_DELTA[flierDirection].z * i}
+        if tileGridOccupied(lastPlacedTileX + possibleOffset.x, lastPlacedTileZ + possibleOffset.z) then
+            local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + possibleOffset.x][lastPlacedTileZ + possibleOffset.z].tile_guid)
+            if possibleTile ~= nil then
+                possibleTile.highlightOn({1,1,1})
+            end
+        end
+    end
+end
+
+function flierHighlightTileOff()
+    for i=1, 3 do
+        local possibleOffset = {x=DIAGONAL_DELTA[flierDirection].x * i, z=DIAGONAL_DELTA[flierDirection].z * i}
+        if not (possibleOffset.x == flierOffset.x and possibleOffset.z == flierOffset.z) then
+            if tileGridOccupied(lastPlacedTileX + possibleOffset.x, lastPlacedTileZ + possibleOffset.z) then
+                local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + possibleOffset.x][lastPlacedTileZ + possibleOffset.z].tile_guid)
+                if possibleTile ~= nil then
+                    possibleTile.highlightOff()
+                end
+            end
+        end
+    end
+end
+
+function flierClear()
+    if flierOffset ~= nil and lastPlacedTileX ~= nil and tileGridOccupied(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
+        local possibleTile = getObjectFromGUID(tileGrid[lastPlacedTileX + flierOffset.x][lastPlacedTileZ + flierOffset.z].tile_guid)
+        if possibleTile ~= nil then
+            possibleTile.highlightOff()
+        end
+    end
+end
+
+function flierCheckDestination()
+    if tileGridOccupied(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
+        if PnDIsDragonOnTile(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z) then
+            allGameMessage({"MESSAGE_FLIER_LANDED_ON_DRAGON"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+            table.insert(removedFigures, {guid=flier, winner=false})
+            return false
+        end
+        resetTraversal()
+        local destinationTile = getObjectFromGUID(tileGrid[lastPlacedTileX + flierOffset.x][lastPlacedTileZ + flierOffset.z].tile_guid)
+        local destinationTileData = getTileDataForTile(destinationTile)
+        local hasIncompleteFeature = false
+        for i=1, 12 do
+            if getTileFeatureName(destinationTile, i) == 'City' or getTileFeatureName(destinationTile, i) == 'Road' then --fields are not valid destinations
+                if getObjectFromGUID(flier).getVar('figureName') ~= 'Mayor' or getTileFeatureName(destinationTile, i) == 'City' then
+                    if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, i, 1, false) > 0 then
+                        hasIncompleteFeature = true
+                    end
+                end
+            end
+        end
+        local specialFeatures = destinationTileData.specialFeatures
+        for j, feature in pairs(specialFeatures) do
+            if (feature[1] == 'Cloister' or feature[1] == 'Abbey') and getObjectFromGUID(flier).getVar('figureName') ~= 'Mayor' then
+                if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, j + 12, 1, false) > 0 then
+                    hasIncompleteFeature = true
+                end
+            end
+            if feature[1] == 'Garden' and getObjectFromGUID(flier).getVar('figureName') == 'Abbot' then
+                if getFeatureComponents(lastPlacedTileX + flierOffset.x, lastPlacedTileZ + flierOffset.z, j + 12, 1, false) > 0 then
+                    hasIncompleteFeature = true
+                end
+            end
+        end
+        if hasIncompleteFeature then
+            return true
+        else
+            allGameMessage({"MESSAGE_FLIER_NO_DESTINATION"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+        end
+    else
+        allGameMessage({"MESSAGE_FLIER_NO_TILE"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
+    end
+
+    table.insert(removedFigures, {guid=flier, winner=false})
+    return false
+end
+
+function flierShowFeatureMarkers(newFigure)
+    local xIndex = lastPlacedTileX + flierOffset.x
+    local zIndex = lastPlacedTileZ + flierOffset.z
+    local locationMarkers = {}
+    locationMarkers[xIndex] = {}
+    locationMarkers[xIndex][zIndex] = {}
+
+    local featuresToMark = {}
+
+    local positionsToVisit = { }
+
+    local tileData = getTileDataForTile(getObjectFromGUID(tileGrid[xIndex][zIndex].tile_guid))
+    local specialFeatures = tileData.specialFeatures
+    if specialFeatures ~= nil then
+        for specialFeatureNum, specialFeature in pairs(specialFeatures) do
+            if specialFeature[3] ~= nil then
+                table.insert(positionsToVisit, specialFeatureNum+12)
+            end
+        end
+    end
+    for featureMapPosition=1, 12 do
+        table.insert(positionsToVisit, featureMapPosition)
+    end
+
+    for _, featureMapPosition in ipairs(positionsToVisit) do
+        local featureNum = getFeatureNumAt(xIndex, zIndex, featureMapPosition)
+        if featureNum ~= nil and featuresToMark[featureNum] == nil then
+            if flierisValidLocation(newFigure, featureNum, false) then
+                setOrUpdateLocationMarker(locationMarkers, xIndex, zIndex, featureMapPosition, 0)
+                featuresToMark[featureNum] = true
+            end
+        end
+    end
+
+    showLocationMarkers(newFigure, locationMarkers)
+    return 1
+end
+
+--called when the flier die is rolled. Checks to make sure the last player to pick it up was the player eligible to roll
+function flierOnFlierDiceRolled(params)
+    local player = params.sPlayer
+    --Don't do anything if the player that rolled the die is not the current player
+    if (currentMiniTurn ~= nil and (player ~= activePlayers[currentMiniTurn] and player ~= getCurrentPlayerOwner())) or
+        (currentMiniTurn == nil and (player ~= activePlayers[currentPlayer] and player ~= getCurrentPlayerOwner())) then
+        playerErrorMessage({"MESSAGE_FLIER_WRONG_PLAYER_ROLLED"}, player)
+        return
+    end
+    --Don't do anything unless it is a turnState where a player would be expected to roll the die
+    if turnState ~= 'wait for flier roll' and turnState ~= 'wait for flier roll - phantom' then return end
+    local dieValue = getObjectFromGUID(flierDie_GUID).getValue()
+    if dieValue > 3 then dieValue = 7 - dieValue end
+    flierOffset = {x=DIAGONAL_DELTA[flierDirection].x * dieValue, z=DIAGONAL_DELTA[flierDirection].z * dieValue}
+    --debugMessage(1, "Flier direction: " .. flierDirection .. " Flier destination offset: x: " .. flierOffset.x .. " z: " .. flierOffset.z)
+    allGameMessage({"MESSAGE_FLIER_DIE_ROLL", {'{p1}', activePlayers[currentPlayer]}, {'{n1}', dieValue}}, player_color_tints[activePlayers[currentPlayer]], activePlayers[currentPlayer])
+    return nextState('die rolled')
+end
+
+--Restore any saved data from flier expansion
+function flierLoadData(saved_data)
+    flier = saved_data.flier
+    flierOffset = saved_data.flierOffset
+    flierDirection = saved_data.flierDirection
+    hasAlreadyUsedFlier = saved_data.hasAlreadyUsedFlier
+    flierDie_GUID = saved_data.flierDie_GUID
+end
+
+--Save data from flier expansion
+function flierSaveData(saved_data)
+    saved_data.flier = flier
+    saved_data.flierOffset = flierOffset
+    saved_data.flierDirection = flierDirection
+    saved_data.hasAlreadyUsedFlier = hasAlreadyUsedFlier
+    saved_data.flierDie_GUID = flierDie_GUID
+end

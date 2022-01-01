@@ -228,51 +228,6 @@ vipFigureSettings = {
     -- }
 }
 
---figures that can be generated in code
---[<setting name>] = {[<expansion bag>] = {[<item name>] = {width = <width of object>}}}
-neutralFigureSettings = {
-    ['FlierFlier'] = {
-        width = 1.0,
-        use_snap_points = false,
-        object_params = {type = 'Custom_Dice', scale = {1.0, 1.0, 1.0}},
-        custom_object_params = {type=1, image = 'http://cloud-3.steamusercontent.com/ugc/1009311636238680991/7292CDD3CA4B7E2FB4F75B5BE315CC5A6EC7092C/'},
-        custom_script =
-[[m_sLastPlayer = nil
-loaded = false
-dieColliding = false
-diePickedUp = false
-
-function onLoad()
-    loaded = true
-end
-
-function onCollisionEnter(collision_info)
-    dieColliding = true
-end
-
-function onCollisionExit(collision_info)
-    dieColliding = false
-end
-
-function onUpdate()
-    if diePickedUp and dieColliding and loaded and self.resting and m_sLastPlayer ~= nil then
-        dieColliding = false
-        diePickedUp = false
-        Global.call('onFlierDiceRolled', {sPlayer = m_sLastPlayer})
-    end
-end
-
-function onPickedUp(player_color)
-    diePickedUp = true
-    m_sLastPlayer = player_color     --Remember last player who picked up the die
-end
-
-function getLastPlayerColor()
-    return m_sLastPlayer
-end]]
-    }
-}
-
 --items that are difficult to generate in code, which should be pulled from bags instead
 --[<setting name>] = {[<expansion bag>] = {[<item name>] = {width = <width of object>}}}
 neutralContainerSettings = {
@@ -700,45 +655,7 @@ end
 function prepareNeutralItems()
     local offset = 0
     offset = PnDPrepareNeutralItems(offset)
-    for rule_id, figureSetting in pairs(neutralFigureSettings) do
-        local figureSettingCopy = table.shallow_copy(figureSetting)
-        if controlPanelSettings[rule_id] then
-            local num
-            if figureSettingCopy.num ~= nil then num = controlPanelSettings[figureSettingCopy.num] else num = 1 end
-            for i=1, num do
-                offset = offset + figureSetting.width / 2
-                local object_params = table.shallow_copy(figureSettingCopy.object_params)
-                object_params.position = {x = NEUTRAL_ITEMS_LOCATION.x + offset, y = NEUTRAL_ITEMS_LOCATION.y, z = NEUTRAL_ITEMS_LOCATION.z}
-                object_params.rotation = {0,180,0}
-                object_params.callback_owner = Global
-                object_params.callback = "neutralItemsUnlock"
-                neutralItemsLock = true
-                local obj = spawnObject(object_params)
-
-                local custom_object_params = table.shallow_copy(figureSettingCopy.custom_object_params)
-                obj.setCustomObject(custom_object_params)
-                obj.setName(translate(figureSettingCopy.name))
-                if figureSettingCopy.color ~= nil then
-                    obj.setColorTint(figureSettingCopy.color)
-                end
-                if figureSettingCopy.name ~= nil then
-                    obj.setLuaScript("figureName = '" .. figureSettingCopy.name .. "'")
-                end
-                if figureSettingCopy.custom_script ~= nil then
-                    obj.setLuaScript(figureSettingCopy.custom_script)
-                end
-                obj.use_grid = false
-                obj.use_snap_points = figureSettingCopy.use_snap_points
-                offset = offset + figureSetting.width / 2
-                while neutralItemsLock do
-                   coroutine.yield(0)
-                end
-                if rule_id == 'FlierFlier' then
-                    flierDie_GUID = obj.getGUID()
-                end
-            end
-        end
-    end
+    offset = flierPrepareNeutralItems(offset)
     for rule_id, rule in pairs(neutralContainerSettings) do
         if controlPanelSettings[rule_id] then
             for expansion_id, expansion in pairs(rule) do

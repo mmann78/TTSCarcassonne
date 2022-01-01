@@ -308,10 +308,6 @@ turnState = "pre-game"
 currentMiniTurn = nil --used when the player order must be iterated within someone's turn
 
 buriedTile = nil
-flier = nil
-flierOffset = nil
-flierDirection = nil
-hasAlreadyUsedFlier = false
 carcassonneFigures = nil
 earnedPointsThisTile = {}
 removedFigures = {}
@@ -322,9 +318,6 @@ tileInPlay = true
 
 --keep track of these tiles to control the order that the AI places them
 finalTile_GUID = nil
-
---The following neutral figures need to be tracked runtime
-flierDie_GUID = nil
 
 --debugLogTabIndex = -1
 --gameLogTabIndex = -1
@@ -513,6 +506,8 @@ controlPanelSettings = {
 #include !\TTSCarcassonne\scripts\expansion_hills_sheep
 
 #include !\TTSCarcassonne\scripts\expansion_tower
+
+#include !\TTSCarcassonne\scripts\expansion_flier
 
 #include !\TTSCarcassonne\scripts\state_machine
 
