@@ -189,35 +189,6 @@ function onSave()
     return jsonencode(toSave)
 end
 
-
-
-m_Routines = {}
-
---[[ The Update function. This is called once per frame. --]]
-function update()
-    --this replaces the built-in coroutine functions, since the built-in ones have the unfortunate side-effect that they continue to run after loading a game. These will not.
-    --Update: this may have been fixed in a recent TTS update. The build-in ones should now cancel when the game is loaded
-    --However, I'm leaving this alternate system since it should be functionally identical
-    local iNumRoutines = #m_Routines
-
-    for i = iNumRoutines, 1, -1 do
-        local sStatus = coroutine.status(m_Routines[i].Co)
-        --resume all coroutines with yield 0
-        if sStatus == 'suspended' and m_Routines[i].iYield == 0 then
-            local bRes = false
-            local iYield = 0
-
-            bRes, iYield = coroutine.resume(m_Routines[i].Co) --resume the coroutine and save the value from yield (to allow to use e.g. yield(1) to not have it resumed automatically)
-
-            iYield = iYield or 0 --default to 0 (-> both .yield() and .yield(0) works)
-            m_Routines[i].iYield = iYield
-        --clear finished routines
-        elseif sStatus == 'dead' then
-            table.remove(m_Routines, i)
-        end
-    end
-end
-
 --this manages some controlPanelSettings, such as hotseats and some settings that are dependent on the number of players
 --it should be called before object onPlayerChangedColor scripts are called (VERY IMPORTANT)
 function onPlayerChangedColor(player_color)

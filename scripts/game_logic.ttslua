@@ -1476,16 +1476,7 @@ function praiseFigures()
     --Slightly different code path if true
     gReturningShepherds = false
 
-    --The built in coroutine functionality had a bug at one point. Managing the coroutines in the script via onUpdate
-    --gets around this bug and is how it is implemented here. TODO: check if the bug still exists
-    --startLuaCoroutine(self, 'praiseFiguresCoroutine')
-
-    local CoNew = coroutine.create(praiseFiguresCoroutine)
-    --add it to the list of active coroutines
-    table.insert(m_Routines, {Co = CoNew, iYield = 0})
-    --run it...
-    local iIdx = #m_Routines
-    coroutine.resume(m_Routines[iIdx].Co, m_Routines[iIdx].iYield)
+    startLuaCoroutine(self, 'praiseFiguresCoroutine')
 end
 
 --makes the winning followers spin and marks the features that were scored
@@ -1557,7 +1548,6 @@ function identifyFeature(obj)
 end
 
 function returnFigures(skipStates)
-    --startLuaCoroutine(self, 'returnFiguresCoroutine')
 
     --HACK: ransoming followers shouldn't progress the state machine
     if skipStates then
@@ -1565,12 +1555,7 @@ function returnFigures(skipStates)
     else
         skipStateProgression = false
     end
-    local CoNew = coroutine.create(returnFiguresCoroutine)
-    --add it to the list of active coroutines
-    table.insert(m_Routines, {Co = CoNew, iYield = 0})
-    --run it...
-    local iIdx = #m_Routines
-    coroutine.resume(m_Routines[iIdx].Co, m_Routines[iIdx].iYield)
+    startLuaCoroutine(self, 'returnFiguresCoroutine')
 end
 
 --send figures back to the player supply area (assuming that's where they were when the game started)
