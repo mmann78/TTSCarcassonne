@@ -177,9 +177,9 @@ function towerRansomFollowerButton(object, sPlayer)
             end
         end
         table.insert(removedFigures, {guid=object.getGUID(), winner=false})
-        scorePoints(activePlayers[currentPlayer], 'Ransom', -3)
+        scorePoints(activePlayers[currentPlayer], 'Ransom', -3, true)
         if captor ~= nil then
-            scorePoints(captor, 'Ransom', 3)
+            scorePoints(captor, 'Ransom', 3, true)
             allGameMessage({"MESSAGE_TOWER_RANSOM", {'{c1}', object.getDescription()}, {'{f1}', object.getName() .. RGBToBracketedHex(NEUTRAL_COLOR)}, {'{c2}', RGBToBracketedHex(player_color_tints[captor]) .. captor}}, player_color_tints[object.getVar('owner')])
         else
             allErrorMessage({"MESSAGE_TOWER_ERROR_MISSING_CAPTURE"})

@@ -77,7 +77,7 @@ function PnDFairyReward()
                 allGameMessage({"MESSAGE_FAIRY_WARNING_NO_TILESTACK"}, NEUTRAL_COLOR)
             else
                 allGameMessage({"MESSAGE_SCORE_FAIRY_IDLE", {'{p1}', getPlayerOwnerName(eligibleFollower.getVar('owner'))}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
-                scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 1)
+                scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 1, true)
             end
         end
     end

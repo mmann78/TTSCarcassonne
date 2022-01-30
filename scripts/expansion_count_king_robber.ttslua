@@ -138,7 +138,7 @@ function KnRBScoreFeature()
                 end
                 if (obj.getGUID() == KnRBKing_GUID and controlPanelSettings['KnRBKing']) or (obj.getGUID() == KnRBRobber_GUID and controlPanelSettings['KnRBRobber']) then
                     allGameMessage({"MESSAGE_SCORE_KING_OR_ROBBER_BARON", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', score}, {'{f1}', obj.getName()}}, player_color_tints[player])
-                    scorePoints(player, 'King/Robber Tokens', score)
+                    scorePoints(player, 'King/Robber Tokens', score, true)
                     table.insert(removedFigures, {guid=obj.getGUID(), winner=true})
                     obj.setLock(false)
                     obj.use_gravity = false

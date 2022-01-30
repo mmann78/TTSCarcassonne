@@ -247,6 +247,8 @@ function initializeScoreSummary()
         scoreSummary[player_color]['Road'] = 0
         scoreSummary[player_color]['Field'] = 0
         scoreSummary[player_color]['Cloister'] = 0
+        scoreSummary[player_color]['Individual Points'] = 0
+        scoreSummary[player_color]['Shared Points'] = 0
         TnBInitializeScoreSummary(scoreSummary[player_color])
         HaSInitializeScoreSummary(scoreSummary[player_color])
         PnDInitializeScoreSummary(scoreSummary[player_color])
@@ -259,7 +261,7 @@ function initializeScoreSummary()
     end
 end
 
-function scorePoints(player, feature, points)
+function scorePoints(player, feature, points, individual)
     if feature == 'Abbey' or feature == 'Shrine' or feature == 'Garden' or feature == "Baba Yaga's Hut" then
         feature = 'Cloister'  --these don't really need a seperate category
     end
@@ -270,6 +272,15 @@ function scorePoints(player, feature, points)
     if earnedPointsThisTile[player] == nil then earnedPointsThisTile[player] = 0 end
     earnedPointsThisTile[player] = earnedPointsThisTile[player] + points
     scoreSummary[player][feature] = scoreSummary[player][feature] + points
+    if individual then
+            scoreSummary[player]['Individual Points'] = scoreSummary[player]['Individual Points'] + points
+            if scoreSummary[player]['Individual Points'] ~= nil then
+        end
+    else
+        if scoreSummary[player]['Shared Points'] ~= nil then
+            scoreSummary[player]['Shared Points'] = scoreSummary[player]['Shared Points'] + points
+        end
+    end
     local scoreCounter = getObjectFromGUID(score_counter_guids[player])
     if scoreCounter ~= nil then
         scoreCounter.Counter.setValue(scoreCounter.Counter.getValue() + points)
@@ -514,7 +525,7 @@ function resolveWheel()
         if WHEEL_POSITIONS[wofPigPosition] == 'Fortune' then
             allGameMessage({"MESSAGE_WHEEL_FORTUNE"}, NEUTRAL_COLOR)
             allGameMessage({"MESSAGE_WHEEL_FORTUNE_SCORED", {'{p1}', getPlayerOwnerName(activePlayers[currentPlayer])}}, player_color_tints[activePlayers[currentPlayer]])
-            scorePoints(activePlayers[currentPlayer], 'Wheel', 3)
+            scorePoints(activePlayers[currentPlayer], 'Wheel', 3, true)
         elseif WHEEL_POSITIONS[wofPigPosition] == 'Taxes' then
             allGameMessage({"MESSAGE_WHEEL_TAXES"}, NEUTRAL_COLOR)
             for featureNum, figures in pairs(activeFigures) do
@@ -533,7 +544,7 @@ function resolveWheel()
                             end
                         end
                         allGameMessage({"MESSAGE_WHEEL_EVENT_SCORED", {'{p1}', getPlayerOwnerName(follower.getVar('owner'))}, {'{n1}', num_points}, {'{s1}', translate(WHEEL_POSITIONS[wofPigPosition])}}, player_color_tints[follower.getVar('owner')])
-                        scorePoints(follower.getVar('owner'), 'Wheel', num_points)
+                        scorePoints(follower.getVar('owner'), 'Wheel', num_points, true)
                     end
                 end
             end
@@ -572,7 +583,7 @@ function resolveWheel()
                             end
                             local playerScore = num_cities * scoreMultiplier
                             allGameMessage({"MESSAGE_WHEEL_EVENT_SCORED", {'{p1}', getPlayerOwnerName(follower.getVar('owner'))}, {'{n1}', playerScore}, {'{s1}', translate(WHEEL_POSITIONS[wofPigPosition])}}, player_color_tints[follower.getVar('owner')])
-                            scorePoints(follower.getVar('owner'), 'Wheel', playerScore)
+                            scorePoints(follower.getVar('owner'), 'Wheel', playerScore, true)
                         end
                     end
                 end
@@ -581,7 +592,7 @@ function resolveWheel()
             allGameMessage({"MESSAGE_WHEEL_STORM"}, NEUTRAL_COLOR)
             for playerColor, num_followers in pairs(baselineFollowerCounts) do
                 allGameMessage({"MESSAGE_WHEEL_EVENT_SCORED", {'{p1}', getPlayerOwnerName(playerColor)}, {'{n1}', num_followers}, {'{s1}', translate(WHEEL_POSITIONS[wofPigPosition])}}, player_color_tints[playerColor])
-                scorePoints(playerColor, 'Wheel', num_followers)
+                scorePoints(playerColor, 'Wheel', num_followers, true)
             end
         elseif WHEEL_POSITIONS[wofPigPosition] == 'Inquisition' then
             allGameMessage({"MESSAGE_WHEEL_INQUISITION"}, NEUTRAL_COLOR)
@@ -589,7 +600,7 @@ function resolveWheel()
                 if table.contains(CLOISTER_FEATURES, featureList[featureNum].nameOfFeature) then
                     for _, follower in ipairs(figures.followers) do
                         allGameMessage({"MESSAGE_WHEEL_INQUISITION_SCORED", {'{p1}', getPlayerOwnerName(follower.getVar('owner'))}, {'{n1}', 2}, {'{s1}', translate(WHEEL_POSITIONS[wofPigPosition])}}, player_color_tints[follower.getVar('owner')])
-                        scorePoints(follower.getVar('owner'), 'Wheel', 2)
+                        scorePoints(follower.getVar('owner'), 'Wheel', 2, true)
                     end
                 end
             end
@@ -674,7 +685,7 @@ function rewardCrownSpaces()
             if #crownFollowers > 1 or table.contains({'Fortune', 'Famine', 'Inquisition'}, WHEEL_POSITIONS[wofPigPosition]) then points = 3 end
             for i, follower in ipairs(crownFollowers) do
                 allGameMessage({"MESSAGE_WHEEL_CROWN_SCORED", {'{p1}', getPlayerOwnerName(follower.getVar('owner'))}, {'{n1}', points}, {'{s1}', translate(WHEEL_POSITIONS[wofPigPosition])}}, player_color_tints[follower.getVar('owner')])
-                scorePoints(follower.getVar('owner'), 'Wheel', points)
+                scorePoints(follower.getVar('owner'), 'Wheel', points, true)
 
                 if showMarkers == 'Both' or showMarkers == 'Scoring' then
                     local xIndex, zIndex, xPosition, zPosition = getFigureTileLocation(follower)
@@ -881,7 +892,7 @@ function retrieveAbbotButton(object, sPlayer)
                 local player = object.getVar('owner')
                 allGameMessage({"MESSAGE_ABBOT_RETRIEVE", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', score}, {'{s1}', translate(nameOfFeature)}}, player_color_tints[player])
                 statsScoredFeatures(player, nameOfFeature, false, {object}, nil, nil, score, score)
-                scorePoints(player, nameOfFeature, score)
+                scorePoints(player, nameOfFeature, score, true)
                 table.insert(removedFigures, {guid=object.getGUID(), winner=true})
                 object.setLock(false)
                 object.use_gravity = false
@@ -1238,6 +1249,10 @@ function scoreFeatures()
                             score = featureList[featureNum].numTiles
                             numElements = score
                         end
+                        local numPlayersScoring = 0
+                        for player, value in pairs(followerCounts) do
+                            numPlayersScoring = numPlayersScoring+1
+                        end
                         for player, value in pairs(followerCounts) do
                             if nameOfFeature ~= 'Carcassonne' and string.sub(nameOfFeature,1,8) ~= 'Quarter-' and string.sub(nameOfFeature,1,6) ~= 'Crown-' and nameOfFeature ~= 'Tower Foundation' and string.sub(nameOfFeature,1,6) ~= 'Flier' then
                                 if gameover or featureComplete or (nameOfFeature == 'Field' and hasBarn and #featureFollowers > 0) or (gameover and hasBarn and #featureFollowers == 0) then
@@ -1264,7 +1279,7 @@ function scoreFeatures()
                                         end
                                         allGameMessage({"MESSAGE_SCORE", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', playerScore}, {'{f1}', translate(nameOfFeature)}}, player_color_tints[player]) -- .. " with a strength of " .. value .. " followers", player_color_tints[player])
                                         statsScoredFeatures(player, nameOfFeature, featureComplete, featureFollowers, featureSpecialFigures, featureList[featureNum].specialFeatures, playerScore, numElements)
-                                        scorePoints(player, nameOfFeature, playerScore)
+                                        scorePoints(player, nameOfFeature, playerScore, numPlayersScoring <= 1)
                                     elseif value > 0 then
                                         --allGameMessage(player .. " did not score any points with a strength of only " .. value .. " followers", player_color_tints[player])
                                     elseif topWeight == 0 and hasMayor[player] then
@@ -1294,7 +1309,7 @@ function scoreFeatures()
                                     for _, eligibleFollower in ipairs(eligibleFollowers) do
                                         if eligibleFollower == follower then
                                             allGameMessage({"MESSAGE_SCORE_FAIRY_FINISH", {'{p1}', getPlayerOwnerName(eligibleFollower.getVar('owner'))}, {'{f1}', eligibleFollower.getName()}}, player_color_tints[eligibleFollower.getVar('owner')])
-                                            scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 3)
+                                            scorePoints(eligibleFollower.getVar('owner'), 'Fairy', 3, true)
                                         end
                                     end
                                     AnMSetWagonOwner(follower, featureNum)

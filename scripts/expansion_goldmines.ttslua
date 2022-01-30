@@ -73,7 +73,7 @@ function goldScoreFeatures()
                 goldMultiplier = 1
             end
             allGameMessage({"MESSAGE_SCORE_GOLD_MINES", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', playerNumGold * goldMultiplier}, {'{n2}', playerNumGold}, {'{n3}', goldMultiplier}}, player_color_tints[player])
-            scorePoints(player, 'Gold', playerNumGold * goldMultiplier)
+            scorePoints(player, 'Gold', playerNumGold * goldMultiplier, true)
             traversedFeaturePositions = {}
 
             if showMarkers == 'Both' or showMarkers == 'Scoring' then

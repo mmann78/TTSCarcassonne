@@ -98,6 +98,13 @@ function TnBScoreFeatures(tokenType)
 
     if highestNumTokens > 0 then
         scoredTokens = true
+        local numPlayersWin = 0
+        --Figure out if multiple players got the token
+        for _, player in ipairs(activePlayers) do
+            if tokenCounts[player] == highestNumTokens then
+                numPlayersWin = numPlayersWin + 1
+            end
+        end
 
         --give points to players with the most tokens
         for _, player in ipairs(activePlayers) do
@@ -105,7 +112,7 @@ function TnBScoreFeatures(tokenType)
             if tokenCounts[player] == highestNumTokens then
                 winner = true
                 allGameMessage({"MESSAGE_SCORE_TRADE_TOKENS", {'{p1}', getPlayerOwnerName(player)}, {'{n1}', 10}, {'{f1}', tokenType}}, player_color_tints[player])
-                scorePoints(player, 'Trade Goods', 10)
+                scorePoints(player, 'Trade Goods', 10, numPlayersWin <= 1)
             else
                 winner = false
             end
