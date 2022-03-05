@@ -1416,7 +1416,6 @@ function scoreFeatures()
         statsDisplayGlobalStats()
 
         allGameMessage({"MESSAGE_GAME_OVER"}, NEUTRAL_COLOR)
-        allGameMessage({"MESSAGE_GAME_OVER_PROMOTE"}, NEUTRAL_COLOR)
         return nextState('finished')
     else
         return nextState('next')
