@@ -11,7 +11,21 @@ end
 
 --Player scoring data specific to expansion
 function HaSInitializeAdditionalPlayerStats(player)
+    if controlPanelSettings['HnSVineyards'] then
+        player['Vineyards'] = 0
+    end
+end
 
+function HaSCheckForVineyard(player, specialFigures)
+    if not controlPanelSettings['HnSVineyards'] then return end
+
+    if specialFigures ~= nil then
+        for _, feature in ipairs(specialFigures) do
+            if feature == 'Vineyard' then
+                player['Vineyards'] = player['Vineyards'] + 1
+            end
+        end
+    end
 end
 
 function HaSShepherdCheckAddedTileFeature(figure, nameOfFeature)

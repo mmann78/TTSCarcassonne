@@ -35,6 +35,7 @@ function statsInitializeAdditionalPlayerStats()
         InCInitializeAdditionalPlayerStats(playerStats)
         AnMInitializeAdditionalPlayerStats(playerStats)
         riverInitializeAdditionalPlayerStats(playerStats)
+        HaSInitializeAdditionalPlayerStats(playerStats)
     end
 end
 
@@ -93,6 +94,8 @@ function statsScoredFeatures(player, nameOfFeature, featureComplete, featureFoll
                 end
             end
         end
+        HaSCheckForVineyard(playerStats, featureListSpecialFigures)
+
     elseif nameOfFeature == 'Field' then
         --Determine if this breaks the record for largest number of points scored for a farm
         if globalStats["LargestPointFarm"] == nil then
