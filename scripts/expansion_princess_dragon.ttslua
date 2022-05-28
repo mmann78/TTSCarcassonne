@@ -258,25 +258,25 @@ local function PnDMoveDragonDirection(i)
     end
 end
 
-local function PnDMoveDragonDownButton(object, sPlayer)
+function PnDMoveDragonDownButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(1)
     end
 end
 
-local function PnDMoveDragonLeftButton(object, sPlayer)
+function PnDMoveDragonLeftButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(2)
     end
 end
 
-local function PnDMoveDragonUpButton(object, sPlayer)
+function PnDMoveDragonUpButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(3)
     end
 end
 
-local function PnDMoveDragonRightButton(object, sPlayer)
+function PnDMoveDragonRightButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(4)
     end
