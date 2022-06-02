@@ -179,6 +179,18 @@ function PnDIsDragonAwake(specialFeatures)
     return false
 end
 
+function PnDShouldRedraw(specialFeatures)
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Dragon" and not dragonHasAwaken then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 
 function PnDMoveDragonToTile(xIndex, zIndex)
     local dragon = getObjectFromGUID(dragon_GUID)
