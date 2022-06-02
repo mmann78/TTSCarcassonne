@@ -67,7 +67,7 @@ function checkFigurePlacement(params)
             return nextState('placed flier')
         end
         if newFigure.getVar('figureName') == 'Tower' then
-            towerFigurePlacement(xIndex, zIndex, closestFeatureMapPosition)
+            towerFigurePlacement(newFigure, xIndex, zIndex, closestFeatureMapPosition)
             return nextState('placed tower')
         end
         if nameOfFeature == 'Tower Foundation' then
