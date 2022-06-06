@@ -475,6 +475,7 @@ function CoCPromptMovingFromCarcassonne()
         carcassonneFigures = nil
         barnFeatureNumbers = nil
     end
+    return nextState('next')
 end
 
 function CoCSkipPlacingFigure(object, sPlayer)

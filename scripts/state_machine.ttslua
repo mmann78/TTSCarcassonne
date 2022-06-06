@@ -449,8 +449,7 @@ function playerStateHandler()
         checkAddedTileFeatureExtensions()
         return nextState('next')
     elseif turnState == 'prompt moving from carcassonne' then
-        CoCPromptMovingFromCarcassonne()
-        return nextState('next')
+        return CoCPromptMovingFromCarcassonne()
     elseif turnState == 'check added tile feature - dragon' then
         shepherdAwaitingAction = nil
         if PnDCheckTileForDragon(lastPlacedTileX, lastPlacedTileZ) then
@@ -511,8 +510,7 @@ function playerStateHandler()
     elseif turnState == 'end turn' then
         return endTurn()
     elseif turnState == 'game over - prompt moving from carcassonne' then
-        CoCPromptMovingFromCarcassonne()
-        return nextState('next')
+        return CoCPromptMovingFromCarcassonne()
     elseif turnState == 'game over - scoring' then
         clearFigureOptions()
         return scoreFeatures()
