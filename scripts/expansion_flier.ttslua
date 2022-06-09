@@ -39,7 +39,7 @@ if diePickedUp and dieColliding and loaded and self.resting and m_sLastPlayer ~=
 end
 end
 
-function onPickedUp(player_color)
+function onRandomize(player_color)
 diePickedUp = true
 m_sLastPlayer = player_color     --Remember last player who picked up the die
 end
