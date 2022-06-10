@@ -151,10 +151,10 @@ function HaSAddSheepToFieldCoroutine()
                             else
                                 Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.0})
                             end
-                            return
+                            return 1
                         else
                             allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG_DRAWING")
-                            return
+                            return 1
                         end
                     end
                 end
@@ -163,6 +163,7 @@ function HaSAddSheepToFieldCoroutine()
     end
     gameNotification({"MESSAGE_SHEPHERD_FIELD_FULL"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
     HaSAddSheepToShepherd(shepherd)
+    return 1
 end
 
 function HaSAddSheepToTile(shep)
@@ -223,10 +224,10 @@ function HaSAddSheepToTileCoroutine()
                         else
                             Timer.create({identifier=shepherd.getGUID() .. os.clock(), function_name='progressState', function_owner=nil, parameters=nil, delay=1.0})
                         end
-                        return
+                        return 1
                     else
                         allErrorMessage("MESSAGE_SHEPHERD_ERROR_NO_SHEEP_BAG_DRAWING")
-                        return
+                        return 1
                     end
                 end
             end
@@ -234,6 +235,7 @@ function HaSAddSheepToTileCoroutine()
     end
     gameNotification({"MESSAGE_SHEPHERD_FIELD_FULL"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
     HaSAddSheepToShepherd(shepherd)
+    return 1
 end
 
 --if there is no room to add a sheep to a field, it will be placed on the shepherd's head
