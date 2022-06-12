@@ -261,6 +261,7 @@ function riverAddLakeTile(lastPlacedTileX, lastPlacedTileZ, lastTile)
                         lakeTile.setRotation({0, lakeTileRotation * 90, 0})
                         lakeTile.setLock(true)
                         addTile(x, z, lakeTile, lakeTileRotation, false, true)
+                        PnDCheckTileForVolcano(x, z)
                         lakeTile_GUID = nil
                     end
                 end

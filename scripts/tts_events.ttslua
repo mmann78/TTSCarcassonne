@@ -9,6 +9,9 @@
 --though whenever the game is awaiting user interaction, it should be 99% save compatible
 
 function onload(save_state)
+    getObjectFromGUID(PLAY_AREA_SCRIPTING_ZONE_GUID).setPosition({['x']=0,['y']=2.73,['z']=0})
+    -- Also the starting tile (c107f0) should be moved down to TABLE_SURFACE_Y (0.9736049) to match other placed tiles
+
     if save_state ~= nil then
         local saved_data = jsondecode(save_state)
         featureList = saved_data.featureList
@@ -221,7 +224,7 @@ end
 function onObjectSpawn(spawned_object)
     --This is intended to be called when a tile is drawn from the stack.
     if tostring(spawned_object) == 'Card(Clone) (LuaGameObjectScript)' then
-        if controlPanelSettings['PnDDragon'] and not PnDIsDragonAwake(getTileDataForTile(spawned_object).specialFeatures) then
+        if controlPanelSettings['PnDDragon'] and PnDShouldRedraw(getTileDataForTile(spawned_object).specialFeatures) then
             gameNotification({"MESSAGE_DRAGON_TILE_DRAWN_BEFORE_AWAKENED"}, NEUTRAL_COLOR, activePlayers[currentPlayer])
         end
     end

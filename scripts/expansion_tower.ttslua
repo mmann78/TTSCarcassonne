@@ -16,7 +16,7 @@ end
 function towerInitializeAdditionalPlayerStats(player)
 end
 
-function towerFigurePlacement(xIndex, zIndex, closestFeatureMapPosition)
+function towerFigurePlacement(newFigure, xIndex, zIndex, closestFeatureMapPosition)
     numberActiveTowers = 0
     towerX = xIndex
     towerZ = zIndex

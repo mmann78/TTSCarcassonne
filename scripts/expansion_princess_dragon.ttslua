@@ -179,6 +179,18 @@ function PnDIsDragonAwake(specialFeatures)
     return false
 end
 
+function PnDShouldRedraw(specialFeatures)
+    if specialFeatures ~= nil then
+        for _, specialFeature in ipairs(specialFeatures) do
+            if specialFeature[1] == "Dragon" and not dragonHasAwaken then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 
 function PnDMoveDragonToTile(xIndex, zIndex)
     local dragon = getObjectFromGUID(dragon_GUID)
@@ -246,25 +258,25 @@ local function PnDMoveDragonDirection(i)
     end
 end
 
-local function PnDMoveDragonDownButton(object, sPlayer)
+function PnDMoveDragonDownButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(1)
     end
 end
 
-local function PnDMoveDragonLeftButton(object, sPlayer)
+function PnDMoveDragonLeftButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(2)
     end
 end
 
-local function PnDMoveDragonUpButton(object, sPlayer)
+function PnDMoveDragonUpButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(3)
     end
 end
 
-local function PnDMoveDragonRightButton(object, sPlayer)
+function PnDMoveDragonRightButton(object, sPlayer)
     if checkGameButtonPrivileges(sPlayer) then
         PnDMoveDragonDirection(4)
     end

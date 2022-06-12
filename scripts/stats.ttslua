@@ -102,7 +102,7 @@ function statsScoredFeatures(player, nameOfFeature, featureComplete, featureFoll
             globalStats["LargestPointFarm"] = {players=nil, points=0}
         end
         if points >= globalStats["LargestPointFarm"].points then
-            if points > globalStats["LargestPointFarm"].points then
+            if points > globalStats["LargestPointFarm"].points or globalStats["LargestPointFarm"].players == nil then
                 globalStats["LargestPointFarm"].players = {player}
                 globalStats["LargestPointFarm"].points = points
             else
@@ -115,7 +115,7 @@ function statsScoredFeatures(player, nameOfFeature, featureComplete, featureFoll
             globalStats["LargestFarm"] = {players=nil, numCities=0}
         end
         if numElements >= globalStats["LargestFarm"].numCities then
-            if numElements > globalStats["LargestFarm"].numCities then
+            if numElements > globalStats["LargestFarm"].numCities or globalStats["LargestFarm"].players == nil then
                 globalStats["LargestFarm"].players = {player}
                 globalStats["LargestFarm"].numCities = numElements
             else
